@@ -304,6 +304,40 @@ Exclude any BDD scenario or feature file tagged with `@manual`.
 
 Default: `true`
 
+#### behaveTestEnvironmentVariables ####
+
+Enables the ability to set environment variables when executing the behave tests. The environment variables should be 
+defined in the pom.xml:
+```xml
+<plugin>
+  <groupId>org.technologybrewery.habushu</groupId>
+  <artifactId>habushu-maven-plugin</artifactId>
+  <extensions>true</extensions>
+  <configuration>
+    <behaveTestEnvironmentVariables>
+      <ENV_VAR>VALUE</ENV_VAR>
+    </behaveTestEnvironmentVariables>
+  </configuration>
+</plugin>
+```
+To pass environment variables in via the command line using the -D option, use a property placeholder in the pom.xml:
+```xml
+<plugin>
+  <groupId>org.technologybrewery.habushu</groupId>
+  <artifactId>habushu-maven-plugin</artifactId>
+  <extensions>true</extensions>
+  <configuration>
+    <behaveTestEnvironmentVariables>
+      <ENV_VAR>${habushu.ENV_VAR}</ENV_VAR>
+    </behaveTestEnvironmentVariables>
+  </configuration>
+</plugin>
+```
+Then you can specify the value from the cli: `mvn clean install -Dhabushu.ENV_VAR=customValue`. A default value can be
+set in the `<properties>` tag of the pom.xml.
+
+Default: None
+
 #### rewriteLocalPathDepsInArchives ####
 
 Enables the use of the [poetry-monorepo-dependency-plugin](https://pypi.org/project/poetry-monorepo-dependency-plugin/) to rewrite 

@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Leverages the behave package to execute BDD scenarios that are defined in the
@@ -73,6 +74,12 @@ public class BehaveBddTestMojo extends AbstractHabushuMojo {
      */
     @Parameter(property = "habushu.disableOutputCapture", defaultValue = "true")
     protected boolean disableOutputCapture;
+
+    /**
+     * Environment variables utilized in the behave bdd tests.
+     */
+    @Parameter(property = "habushu.behaveTestEnvironmentVariables")
+    protected Map<String, String> behaveTestEnvironmentVariables = null;
 
 
     @Override
@@ -133,7 +140,7 @@ public class BehaveBddTestMojo extends AbstractHabushuMojo {
             getLog().info("-------------------------------------------------------");
             getLog().info("T E S T S");
             getLog().info("-------------------------------------------------------");
-            poetryHelper.executeAndLogOutput(executeBehaveTestArgs);
+            poetryHelper.executeAndLogOutput(executeBehaveTestArgs, behaveTestEnvironmentVariables);
         } else {
             getLog().warn(String.format("No tests found in %s", getCanonicalPathForFile(behaveDirectory)));
         }
