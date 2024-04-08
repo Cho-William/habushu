@@ -42,9 +42,12 @@ jobs:
                   gpg-passphrase: GPG_PASSPHRASE
             - name: Release Habushu
               run: |
+                  git config --local user.email "habushu-noreply@technologybrewery.org"
+                  git config --local user.name "Github Actions"
                   chmod +x release-habushu.sh
                   ./release-habushu.sh ${{ inputs.releaseVersion }} ${{ inputs.developmentVersion }}
               env:
                   MAVEN_USERNAME: ${{ secrets.SONATYPE_CENTRAL_REPO_TOKEN_USER }}
                   MAVEN_PASSWORD: ${{ secrets.SONATYPE_CENTRAL_REPO_TOKEN_KEY }}
                   GPG_PASSPHRASE: ${{ secrets.GPG_PRIVATE_KEY_PASSPHRASE }}
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
