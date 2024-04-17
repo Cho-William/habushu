@@ -177,6 +177,7 @@ public class ProcessExecutor {
         private static final String WARNING_LOG = "WARNING";
         private static final String ERROR_LOG = "ERROR";
         private static final String CRITICAL_LOG = "CRITICAL";
+        private static final String FAILURE_LOG = "FAILURE";
 
         LoggerOutputStream(Logger logger, int logLevel) {
             super(logLevel);
@@ -190,11 +191,12 @@ public class ProcessExecutor {
 
         @Override
         protected void processLine(final String line, final int logLevel) {
-            if (line.toUpperCase().contains(ERROR_LOG) || line.toUpperCase().contains(CRITICAL_LOG)) {
+            final String upperLine = line.toUpperCase();
+            if (upperLine.contains(ERROR_LOG) || upperLine.contains(CRITICAL_LOG) || upperLine.contains(FAILURE_LOG)) {
                 logger.error(line);
-            } else if (line.toUpperCase().contains(WARNING_LOG)) {
+            } else if (upperLine.contains(WARNING_LOG)) {
                 logger.warn(line);
-            } else if (line.toUpperCase().contains(DEBUG_LOG)) {
+            } else if (upperLine.contains(DEBUG_LOG)) {
                 logger.debug(line);
             } else {
                 logger.info(line);
