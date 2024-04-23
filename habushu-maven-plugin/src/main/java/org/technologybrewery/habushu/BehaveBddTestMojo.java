@@ -30,7 +30,7 @@ import java.util.Map;
 public class BehaveBddTestMojo extends AbstractHabushuMojo {
 
     protected static final String BEHAVE_PACKAGE = "behave";
-    protected static final String BEHAVE_CUCUMBER_FORMATTER = "behave-cucumber-formatter";
+    protected static final String BEHAVE_CUCUMBER_FORMATTER = "kappa-maki";
 
     /**
      * Options that should be passed to the behave command. <b>NOTE:</b> If this
@@ -114,7 +114,7 @@ public class BehaveBddTestMojo extends AbstractHabushuMojo {
 
             if (outputCucumberStyleTestReports) {
                 poetryHelper.installDevelopmentDependency(BEHAVE_CUCUMBER_FORMATTER);
-                executeBehaveTestArgs.add("--format=behave_cucumber_formatter:PrettyCucumberJSONFormatter");
+                executeBehaveTestArgs.add("--format=kappa_maki.kappa_maki_formatter:PrettyCucumberJSONFormatter");
                 executeBehaveTestArgs.add("--outfile=target/cucumber-reports/cucumber.json");
                 executeBehaveTestArgs.add("--format=progress2");
             }
