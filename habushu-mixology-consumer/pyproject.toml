@@ -12,11 +12,11 @@ python = "^3.11"
 
 
 [tool.poetry.group.dev.dependencies]
-behave-cucumber-formatter = ">=1.0.1"
+kappa-maki = ">=1.0.0"
 
 [tool.poetry.dev-dependencies]
 black = ">=24.3.0"
-behave = "^1.2.6"
+behave = ">=1.2.6"
 
 [build-system]
 requires = ["poetry-core>=1.6.0"]
