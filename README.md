@@ -780,7 +780,51 @@ Default: `true`
 
 #### omitSkippedTests ####
 
-Controls whether skipped tests should be completely omitted from test reports rather than showing up as a skip / failure. This mimics the default behavior of Cucumber and will have no effect if outputCuucumberStyleTestReports is not set to `true`
+Controls whether skipped tests should be completely omitted from test reports rather than showing up as a skip / failure. This mimics the default behavior of Cucumber and will have no effect if outputCucumberStyleTestReports is not set to `true`
+
+Default: `true`
+
+#### lintSource #### 
+
+Controls if linting is enabled for the source module. 
+
+Default: `true`
+
+#### sourceLintDisabledChecker ####
+
+Controls the disabled checkers for linting in the source module. By default, checks for Convention (C), Refactor (R), and Warning (W) are disabled.  
+
+Default: `C,R,W`
+
+#### sourceLintEnabledChecker ####
+
+Controls the enabled checkers for linting in the source module.
+
+#### sourceFailOnLintErrors ####
+
+Controls whether the build will continue if lint identifies code that violate checkers in the source module. 
+
+Default: `true`
+
+#### lintTest ####
+
+Controls if linting is enabled for the test module. 
+
+Default: `true`
+
+#### testLintDisabledChecker ####
+
+Controls the disabled checkers for linting in the test module. By default, checks for Convention (C), Refactor (R), Warning (W), and function-redefined error (E0102) are disabled.  
+
+Default: `C,R,W,E0102`
+
+#### testLintEnabledChecker ####
+
+Controls the enabled checkers for linting in the test module.
+
+#### testFailOnLintErrors ####
+
+Controls whether the build will continue if lint identifies code that violate checkers in the test module. 
 
 Default: `true`
 

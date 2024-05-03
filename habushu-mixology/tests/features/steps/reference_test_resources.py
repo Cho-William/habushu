@@ -1,4 +1,4 @@
-from behave import *
+from behave import when, then  # pylint: disable=no-name-in-module
 
 
 @when("I reference a test resource in my test file")

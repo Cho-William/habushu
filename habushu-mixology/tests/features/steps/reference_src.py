@@ -1,4 +1,4 @@
-from behave import *
+from behave import when, then  # pylint: disable=no-name-in-module
 from habushu_mixology.reusable_module.worker import SubWorker
 from habushu_mixology.helloworld import generate_random_string
 from habushu_mixology.generated import person_pb2
@@ -9,7 +9,7 @@ import logging
 def step_impl(context):
     logging.info("Referencing a src file...")
     context.random = generate_random_string(5)
-    person = person_pb2.Person()
+    person = person_pb2.Person()  # pylint: disable=no-member
     person.email = "habushu@gmail.com"
     context.person = person
 
