@@ -72,6 +72,24 @@ public class PublishToPyPiRepoMojo extends AbstractHabushuMojo {
     @Parameter(property = "habushu.skipDeploy", defaultValue = "false")
     protected boolean skipDeploy;
 
+    /**
+     * Allows tailoring of the path used for pushing to a PyPI repository for deployment.  Some repositories, like
+     * Nexus or Artifactory, do not require an url path on top of the base repository url.  Others, do (often using
+     * "legacy/").  This variable allows customization in a manner that does not impact the installation API for the
+     * same repository.  Defaults to empty as the most common scenario when overriding the repository URL is to leverage
+     * one of the repositories mentioned above.
+     */
+    @Parameter(property = "habushu.pypiUploadSuffix", defaultValue = "")
+    protected String pypiUploadSuffix;
+
+    /**
+     * {{@link #pypiUploadSuffix repositoryUploadSuffix} contains critical information.  The main difference is that
+     * this dev repository url path defaults to "legacy/" as the most common scenario when overriding the dev
+     * repository URL is to leverage test.pypi.org, which needs this configuration.
+     */
+    @Parameter(property = "habushu.devRepositoryUrlUploadSuffix", defaultValue = "legacy/")
+    protected String devRepositoryUrlUploadSuffix;
+
     @Override
     public void doExecute() throws MojoExecutionException, MojoFailureException {
         if (this.skipDeploy) {
@@ -128,32 +146,40 @@ public class PublishToPyPiRepoMojo extends AbstractHabushuMojo {
             throws MojoExecutionException {
         List<Pair<String, Boolean>> publishToRepoWithCredsArgs = Collections.emptyList();
 
-        String username = null;
-        String password = null;
-        if (StringUtils.isNotEmpty(pypiRepoId)) {
-            username = findUsernameForServer();
-            password = findPasswordForServer();
+        boolean publishToDev = rebuildPackage && useDevRepository;
+        if (publishToDev) {
+            getLog().info("Publishing to dev repository (useDevRepository=true, dev version being published)");
         }
 
-        if (StringUtils.isNotEmpty(pypiRepoUrl)) {
+        String username = null;
+        String password = null;
+        String repoId = publishToDev ? devRepositoryId : pypiRepoId;
+        if (StringUtils.isNotEmpty(repoId)) {
+            username = findUsernameForServer(repoId);
+            password = findPasswordForServer(repoId);
+        }
+
+        String repoUrl = getRepositoryUrl(publishToDev);
+
+        if (StringUtils.isNotEmpty(repoUrl)) {
             if (StringUtils.isEmpty(username) || StringUtils.isEmpty(password)) {
                 throw new MojoExecutionException(String.format(
                         "Please ensure that both <username> and <password> are provided for the <server> with <id> %s in your settings.xml configuration!",
-                        pypiRepoId));
+                        repoId));
             }
 
-            getLog().info(String.format("Adding repository configuration to poetry.toml for %s at %s", pypiRepoId,
-                    pypiRepoUrl));
+            getLog().info(String.format("Adding repository configuration to poetry.toml for %s at %s", repoId,
+                    repoUrl));
             poetryHelper.execute(
-                    Arrays.asList("config", "--local", String.format("repositories.%s", pypiRepoId), pypiRepoUrl));
+                    Arrays.asList("config", "--local", String.format("repositories.%s", repoId), repoUrl));
         }
 
         if (StringUtils.isNotEmpty(username) && StringUtils.isNotEmpty(password)) {
             publishToRepoWithCredsArgs = new ArrayList<Pair<String, Boolean>>();
 
-            if (!PUBLIC_PYPI_REPO_ID.equals(this.pypiRepoId)) {
+            if (!PUBLIC_PYPI_REPO_ID.equals(repoId)) {
                 publishToRepoWithCredsArgs.add(new ImmutablePair<String, Boolean>("--repository", false));
-                publishToRepoWithCredsArgs.add(new ImmutablePair<String, Boolean>(pypiRepoId, false));
+                publishToRepoWithCredsArgs.add(new ImmutablePair<String, Boolean>(repoId, false));
             }
             publishToRepoWithCredsArgs.add(new ImmutablePair<String, Boolean>("--username", false));
             publishToRepoWithCredsArgs.add(new ImmutablePair<String, Boolean>(username, false));
@@ -164,7 +190,7 @@ public class PublishToPyPiRepoMojo extends AbstractHabushuMojo {
         String publishCommand = rewriteLocalPathDepsInArchives ? "publish-rewrite-path-deps" : "publish";
 
         getLog().info(String.format("Publishing archives to %s %s",
-                StringUtils.isNotEmpty(pypiRepoUrl) ? pypiRepoUrl : "official PyPI repository",
+                StringUtils.isNotEmpty(repoUrl) ? repoUrl : "official PyPI repository",
                 rewriteLocalPathDepsInArchives ? "with poetry-monorepo-dependency-plugin" : ""));
 
         if (!publishToRepoWithCredsArgs.isEmpty()) {
@@ -179,7 +205,8 @@ public class PublishToPyPiRepoMojo extends AbstractHabushuMojo {
                     "PyPI repository credentials not specified in <server> element in settings.xml with <id> of %s",
                     PUBLIC_PYPI_REPO_ID));
             getLog().warn(
-                    "Please populate settings.xml with PyPI credentials or ensure that Poetry is manually configured with the correct PyPI credentials (i.e. poetry config pypi-token.pypi my-token)");
+                    "Please populate settings.xml with PyPI credentials or ensure that Poetry is manually " +
+                            "configured with the correct PyPI credentials (i.e. poetry config pypi-token.pypi my-token)");
             List<String> publishToOfficialPypiRepoArgs = new ArrayList<>();
             publishToOfficialPypiRepoArgs.add(publishCommand);
             if (rebuildPackage) {
@@ -187,5 +214,25 @@ public class PublishToPyPiRepoMojo extends AbstractHabushuMojo {
             }
             poetryHelper.executeAndLogOutput(publishToOfficialPypiRepoArgs);
         }
+    }
+
+    String getRepositoryUrl(boolean publishToDev) {
+        String repoUrl;
+        if (publishToDev) {
+            repoUrl = addTrailingSlash(devRepositoryUrl) + devRepositoryUrlUploadSuffix;
+        } else {
+            repoUrl = addTrailingSlash(pypiRepoUrl) + pypiUploadSuffix;
+        }
+
+        return addTrailingSlash(repoUrl);
+    }
+
+    private static String addTrailingSlash(String inputUrl) {
+        if (!inputUrl.endsWith("/")) {
+            // PEP-0694 likes a trailing slash:
+            inputUrl += "/";
+        }
+
+        return inputUrl;
     }
 }

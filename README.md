@@ -404,6 +404,13 @@ Specifies the path to the simple index relative to the pypiRepoUrl.  Certain pri
 
 Default: `simple`
 
+#### pypiUploadSuffix ####
+
+Specifies the path to the upload index relative to the pypiRepoUrl.  Certain private repository solutions use
+non-standard paths.
+
+Default: None
+
 #### decryptPassword ####
 
 Specifies whether Habushu should attempt to decrypt the remote server password provided in Maven's `settings.xml` file.  If `false`, the password will be retrieved as-is and assumed to be unencrypted.
@@ -411,6 +418,76 @@ Specifies whether Habushu should attempt to decrypt the remote server password p
 Warning: Storage of plain-text passwords is a security risk!  This functionality is best used when the password is stored in a safe manner outside of Maven's native credential system, and is decrypted prior to execution (Jenkins credentials, for instance).
 
 Default: `true`
+
+#### useDevRepository ####
+Instructs deployment to use a development repository rather than a release repository. This is conceptually
+similar to Maven's release vs. snapshot repositories, allowing the release repository to only have formal
+releases with a separate repository for all 'dev' releases.  Works in conjunction with the 'devRepositoryId'
+Member and `devRepositoryUrl` properties
+
+Default: `false`
+
+#### devRepositoryId ####
+
+Specifies the `<id>` of the `<server>` element declared within the utilized Maven `settings.xml` configuration that 
+represents the development PyPI repository to which this project's archives will be published and/or used as a 
+supplemental repository from which dependencies may be installed. This property is **REQUIRED** if publishing to or 
+consuming dependencies from a private PyPI repository that requires authentication - it is expected that the relevant 
+`<server>` element provides the needed authentication details.
+
+If this property is **not** specified, this property will default to `dev-pypi` and the execution of the `deploy` 
+lifecycle phase will publish this package to the official public Test PyPI repository.  Downstream package publishing 
+functionality will use the relevant `settings.xml` `<server>` declaration with `<id>dev-pypi</id>` as credentials for 
+publishing the package to PyPI. If developers want to use PyPI's [API tokens](https://pypi.org/help/#apitoken) instead of username/password 
+credentials, they may do so by manually executing the appropriate Poetry command 
+(`poetry config pypi-token.pypi my-token`) in an ad-hoc fashion prior to running `deploy`.
+
+This property will typically be specified as a command line option during the `deploy` lifecycle phase.  For example, 
+given the following configuration in the utilized `settings.xml`:
+
+```xml
+    <server>
+        <id>dev-pypi</id>
+        <username>pypi-repo-username</username>
+        <password>{encrypted-pypi-repo-password}</password>
+    </server> 
+```
+
+The following command may be utilized to publish the package to the specified private PyPI repository at 
+`https://private-pypi-repo-url/repository/pypi-repo/`:
+
+```sh 
+$ mvn deploy -Dhabushu.pypiRepoId=dev-pypi -Dhabushu.pypiRepoUrl=https://private-pypi-repo-url/repository/pypi-repo/
+```
+Default: `dev-pypi`
+
+#### devRepositoryUrl ####
+
+Specifies the URL of the private development PyPI repository to which this project's archives will be published and/or 
+used as a supplemental repository from which dependencies may be installed. This property is **REQUIRED** if 
+publishing to or consuming dependencies from a private dev PyPI repository.
+
+If the Habushu project depends on internal packages that may only be found on a private dev PyPI repository, 
+developers should specify this property through the plugin's `<configuration>` definition:
+
+```xml
+	<plugin>
+		<groupId>org.technologybrewery.habushu</groupId>
+		<artifactId>habushu-maven-plugin</artifactId>
+		<extensions>true</extensions>
+		<configuration>
+			<devRepositoryUrl>https://private-pypi-repo-url/repository/pypi-repo</devRepositoryUrl>
+		</configuration>
+	</plugin>
+```
+Default: `https://test.pypi.org`
+
+#### devRepositoryUrlUploadSuffix ####
+
+Specifies the path to the upload index relative to the devRepositoryUrl.  Certain private repository solutions use 
+non-standard paths (ie: `test.pypi.org` uses `+legacy/`).
+
+Default: `legacy/`
 
 #### withGroups ####
 

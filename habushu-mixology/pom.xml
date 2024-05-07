@@ -51,6 +51,7 @@
                         </managedDependencies>
                         <updateManagedDependenciesWhenFound>false</updateManagedDependenciesWhenFound>
                         <failOnManagedDependenciesMismatches>false</failOnManagedDependenciesMismatches>
+                        <useDevRepository>true</useDevRepository>
                     </configuration>
                     <!-- Utilize the run-command-in-virtual-env goal to demonstrate how
                         commands/scripts may be executed via "poetry run" and bound to the build
