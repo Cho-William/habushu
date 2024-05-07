@@ -82,6 +82,18 @@ public abstract class AbstractHabushuMojo extends AbstractMojo {
 
     /**
      * Specifies the {@code <id>} of the {@code <server>} element declared within
+     * the utilized settings.xml configuration that represents the desired
+     * credentials to use when publishing the package to a dev PyPI repository.
+     */
+    public static final String DEV_PYPI_REPO_ID = "dev-pypi";
+
+    /**
+     * Specifies the default dev pypi url to leverage.
+     */
+    public static final String TEST_PYPI_REPOSITORY_URL = "https://test.pypi.org/";
+
+    /**
+     * Specifies the {@code <id>} of the {@code <server>} element declared within
      * the utilized settings.xml configuration that represents the PyPI repository
      * to which this project's archives will be published and/or used as a supplemental
      * repository from which dependencies may be installed. This property is
@@ -107,6 +119,44 @@ public abstract class AbstractHabushuMojo extends AbstractMojo {
      */
     @Parameter(property = "habushu.pypiRepoUrl")
     protected String pypiRepoUrl;
+
+    /**
+     * Instructs deployment to use a development repository rather than a release repository. This is conceptually
+     * similar to Maven's release vs. snapshot repositories, allowing the release repository to only have formal
+     * releases with a separate repository for all 'dev' releases.  Works in conjunction with the
+     * {@code devRepositoryId} and {@code devRepositoryUrl>} properties.
+     */
+    @Parameter(property = "habushu.useDevRepository", defaultValue = "false")
+    protected boolean useDevRepository;
+
+    /**
+     * Specifies the {@code <id>} of the {@code <server>} element declared within
+     * the utilized settings.xml configuration that represents the PyPI dev repository
+     * to which this project's archives will be published and/or used as a supplemental
+     * repository from which dependencies may be installed when {@code useDevRepository}
+     * is enabled. This property is <b>REQUIRED</b> if publishing to or consuming
+     * dependencies from a devPyPI repository that requires authentication - it is
+     * expected that the relevant {@code <server>} element provides the needed
+     * authentication details. If this property is *not* specified, this property will
+     * default to {@link #DEV_PYPI_REPO_ID} and the execution of the {@code deploy}
+     * lifecycle phase will publish this package to the official public Test PyPI
+     * repository. Downstream package publishing functionality (i.e.
+     * {@link PublishToPyPiRepoMojo}) will use the relevant settings.xml
+     * {@code <server>} declaration with a matching {@code <id>} as credentials for
+     * publishing the package to the official public test PyPI repository.
+     */
+    @Parameter(property = "habushu.devRepositoryId", defaultValue = DEV_PYPI_REPO_ID)
+    protected String devRepositoryId;
+
+    /**
+     * Specifies the URL of the PyPI repository to which this project's dev
+     * archives will be published and/or used as a supplemental repository from which
+     * dependencies may be installed. This property is <b>REQUIRED</b> if publishing
+     * to or consuming dependencies from a private PyPI repository.  Should end with a
+     * trailing "/".
+     */
+    @Parameter(property = "habushu.devRepositoryUrl", defaultValue = TEST_PYPI_REPOSITORY_URL)
+    protected String devRepositoryUrl;
 
     /**
      * Specifies whether the version of the encapsulated Poetry package should be
@@ -168,7 +218,17 @@ public abstract class AbstractHabushuMojo extends AbstractMojo {
      * @return the username for the server specified in Maven's settings.xml
      */
     public String findUsernameForServer() {
-        Server server = this.settings.getServer(this.pypiRepoId);
+        return findUsernameForServer(this.pypiRepoId);
+    }
+
+    /**
+     * Find the username for a given server in Maven's user settings.
+     *
+     * @param repoId the id of the repository for which to find the username
+     * @return the username for the server specified in Maven's settings.xml
+     */
+    public String findUsernameForServer(String repoId) {
+        Server server = this.settings.getServer(repoId);
         return server != null ? server.getUsername() : null;
     }
 
@@ -178,25 +238,38 @@ public abstract class AbstractHabushuMojo extends AbstractMojo {
      * @return the password for the server specified in Maven's settings.xml
      */
     public String findPasswordForServer() {
+        return findPasswordForServer(this.pypiRepoId);
+    }
+
+    /**
+     * Find the password for a given server in Maven's user settings, decrypting password if needed.
+     *
+     * @param repoId the id of the repository for which to find the password
+     * @return the password for the server specified in Maven's settings.xml
+     */
+    public String findPasswordForServer(String repoId) {
         String password = "";
         if (this.decryptPassword) {
-            password = decryptServerPassword();
+            password = decryptServerPassword(repoId);
         } else {
             getLog().warn(
                     "Detected use of plain-text password!  This is a security risk!  Please consider using an encrypted password!");
-            password = findPlaintextPasswordForServer();
+            password = findPlaintextPasswordForServer(repoId);
         }
         return password;
     }
 
     /**
      * Simple utility method to decrypt a stored password for a server.
+     *
+     * @param repoId the ide of the repository for which to find the password
+     * @return the decrypted password for the server specified in Maven's settings.xml
      */
-    public String decryptServerPassword() {
+    public String decryptServerPassword(String repoId) {
         String decryptedPassword = null;
 
         try {
-            decryptedPassword = MavenPasswordDecoder.decryptPasswordForServer(this.settings, this.pypiRepoId);
+            decryptedPassword = MavenPasswordDecoder.decryptPasswordForServer(this.settings, repoId);
         } catch (PlexusCipherException | SecDispatcherException e) {
             throw new HabushuException("Unable to decrypt stored passwords.", e);
         }
@@ -204,13 +277,8 @@ public abstract class AbstractHabushuMojo extends AbstractMojo {
         return decryptedPassword;
     }
 
-    /**
-     * Find the plain-text server password, without decryption steps, extracted from Maven's user settings.
-     *
-     * @return the password for the specified server from Maven's settings.xml
-     */
-    public String findPlaintextPasswordForServer() {
-        Server server = this.settings.getServer(this.pypiRepoId);
+    protected String findPlaintextPasswordForServer(String repoId) {
+        Server server = this.settings.getServer(repoId);
         return server != null ? server.getPassword() : null;
     }
 

@@ -6,7 +6,7 @@ import java.io.File;
 import java.util.List;
 
 /**
- * Contains method to make testing easier and set defautl Mojo values that would be done by Maven in normal use.
+ * Contains method to make testing easier and set default Mojo values that would be done by Maven in normal use.
  */
 public class DependencyManagementTestMojo extends InstallDependenciesMojo {
 

@@ -21,9 +21,7 @@ import org.technologybrewery.habushu.util.TomlUtils;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Writer;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
@@ -129,62 +127,9 @@ public class InstallDependenciesMojo extends AbstractHabushuMojo {
 
         processManagedDependencyMismatches();
 
-        if (StringUtils.isNotEmpty(this.pypiRepoUrl) && this.addPypiRepoAsPackageSources) {
-            String pypiRepoSimpleIndexUrl;
-            try {
-                pypiRepoSimpleIndexUrl = getPyPiRepoSimpleIndexUrl(pypiRepoUrl);
-            } catch (URISyntaxException e) {
-                throw new MojoExecutionException(
-                        String.format("Could not parse configured pypiRepoUrl %s", this.pypiRepoUrl), e);
-            }
-
-            // NB later version of Poetry will support retrieving and configuring package
-            // source repositories via the "poetry source" command in future releases, but
-            // for now we need to manually inspect and modify the package's pyproject.toml
-            Config matchingPypiRepoSourceConfig;
-            try (FileConfig pyProjectConfig = FileConfig.of(getPoetryPyProjectTomlFile())) {
-                pyProjectConfig.load();
-
-                Optional<List<Config>> packageSources = pyProjectConfig.getOptional(PYPROJECT_PACKAGE_SOURCES_PATH);
-                matchingPypiRepoSourceConfig = packageSources.orElse(Collections.emptyList()).stream()
-                        .filter(packageSource -> pypiRepoSimpleIndexUrl.equals(packageSource.get("url"))).findFirst()
-                        .orElse(Config.inMemory());
-            }
-
-            if (!matchingPypiRepoSourceConfig.isEmpty()) {
-                if (getLog().isDebugEnabled()) {
-                    getLog().debug(String.format(
-                            "Configured PyPi repository %s found in the following pyproject.toml [[%s]] array element: %s",
-                            this.pypiRepoUrl, PYPROJECT_PACKAGE_SOURCES_PATH, matchingPypiRepoSourceConfig));
-                }
-            } else {
-                // NB NightConfig's TOML serializer generates TOML in a manner that makes it
-                // difficult to append an array element of tables to an existing TOML
-                // configuration, so manually write out the desired new repository TOML
-                // configuration with human-readable formatting
-                List<String> newPypiRepoSourceConfig = Arrays.asList(System.lineSeparator(), String.format(
-                                "# Added by habushu-maven-plugin at %s to use %s as source PyPi repository for installing dependencies",
-                                LocalDateTime.now(), pypiRepoSimpleIndexUrl),
-                        String.format("[[%s]]", PYPROJECT_PACKAGE_SOURCES_PATH),
-                        String.format("name = \"%s\"",
-                                StringUtils.isNotEmpty(this.pypiRepoId) && !PUBLIC_PYPI_REPO_ID.equals(this.pypiRepoId)
-                                        ? this.pypiRepoId
-                                        : "private-pypi-repo"),
-                        String.format("url = \"%s\"", pypiRepoSimpleIndexUrl), "priority = \"supplemental\"");
-                getLog().info(String.format("Private PyPi repository entry for %s not found in pyproject.toml",
-                        this.pypiRepoUrl));
-                getLog().info(String.format(
-                        "Adding %s to pyproject.toml as supplemental repository from which dependencies may be installed",
-                        pypiRepoSimpleIndexUrl));
-                try {
-                    Files.write(getPoetryPyProjectTomlFile().toPath(), newPypiRepoSourceConfig,
-                            StandardOpenOption.APPEND);
-                } catch (IOException e) {
-                    throw new MojoExecutionException(String.format(
-                            "Could not write new [[%s]] element to pyproject.toml", PYPROJECT_PACKAGE_SOURCES_PATH), e);
-                }
-            }
-
+        prepareRepositoryForInstallation(this.pypiRepoId, this.pypiRepoUrl);
+        if (this.useDevRepository) {
+            prepareRepositoryForInstallation(this.devRepositoryId, this.devRepositoryUrl);
         }
 
         if (!this.skipPoetryLockUpdate) {
@@ -209,6 +154,66 @@ public class InstallDependenciesMojo extends AbstractHabushuMojo {
 
         getLog().info("Installing dependencies...");
         poetryHelper.executePoetryCommandAndLogAfterTimeout(installCommand, 2, TimeUnit.MINUTES);
+    }
+
+    private void prepareRepositoryForInstallation(String repoId, String repoUrl) throws MojoExecutionException {
+        if (StringUtils.isNotEmpty(repoUrl) && this.addPypiRepoAsPackageSources) {
+            String pypiRepoSimpleIndexUrl;
+            try {
+                pypiRepoSimpleIndexUrl = getPyPiRepoSimpleIndexUrl(repoUrl);
+            } catch (URISyntaxException e) {
+                throw new MojoExecutionException(
+                        String.format("Could not parse configured repoUrl %s", repoUrl), e);
+            }
+
+            // NB later version of Poetry will support retrieving and configuring package
+            // source repositories via the "poetry source" command in future releases, but
+            // for now we need to manually inspect and modify the package's pyproject.toml
+            Config matchingPypiRepoSourceConfig;
+            try (FileConfig pyProjectConfig = FileConfig.of(getPoetryPyProjectTomlFile())) {
+                pyProjectConfig.load();
+
+                Optional<List<Config>> packageSources = pyProjectConfig.getOptional(PYPROJECT_PACKAGE_SOURCES_PATH);
+                matchingPypiRepoSourceConfig = packageSources.orElse(Collections.emptyList()).stream()
+                        .filter(packageSource -> pypiRepoSimpleIndexUrl.equals(packageSource.get("url"))).findFirst()
+                        .orElse(Config.inMemory());
+            }
+
+            if (!matchingPypiRepoSourceConfig.isEmpty()) {
+                if (getLog().isDebugEnabled()) {
+                    getLog().debug(String.format(
+                            "Configured PyPi repository %s found in the following pyproject.toml [[%s]] array element: %s",
+                            repoUrl, PYPROJECT_PACKAGE_SOURCES_PATH, matchingPypiRepoSourceConfig));
+                }
+            } else {
+                // NB NightConfig's TOML serializer generates TOML in a manner that makes it
+                // difficult to append an array element of tables to an existing TOML
+                // configuration, so manually write out the desired new repository TOML
+                // configuration with human-readable formatting
+                List<String> newPypiRepoSourceConfig = Arrays.asList(System.lineSeparator(), String.format(
+                                "# Added by habushu-maven-plugin at %s to use %s as source PyPi repository for installing dependencies",
+                                LocalDateTime.now(), pypiRepoSimpleIndexUrl),
+                        String.format("[[%s]]", PYPROJECT_PACKAGE_SOURCES_PATH),
+                        String.format("name = \"%s\"",
+                                StringUtils.isNotEmpty(repoId) && !PUBLIC_PYPI_REPO_ID.equals(repoId)
+                                        ? repoId
+                                        : "private-pypi-repo"),
+                        String.format("url = \"%s\"", pypiRepoSimpleIndexUrl), "priority = \"supplemental\"");
+                getLog().info(String.format("Private PyPi repository entry for %s not found in pyproject.toml",
+                        repoUrl));
+                getLog().info(String.format(
+                        "Adding %s to pyproject.toml as supplemental repository from which dependencies may be installed",
+                        pypiRepoSimpleIndexUrl));
+                try {
+                    Files.write(getPoetryPyProjectTomlFile().toPath(), newPypiRepoSourceConfig,
+                            StandardOpenOption.APPEND);
+                } catch (IOException e) {
+                    throw new MojoExecutionException(String.format(
+                            "Could not write new [[%s]] element to pyproject.toml", PYPROJECT_PACKAGE_SOURCES_PATH), e);
+                }
+            }
+
+        }
     }
 
     /**
@@ -376,7 +381,7 @@ public class InstallDependenciesMojo extends AbstractHabushuMojo {
                                 TomlReplacementTuple matchedTuple = replacements.get(key);
                                 if (matchedTuple != null) {
                                     String original = TomlUtils.escapeTomlRightHandSide(matchedTuple.getOriginalOperatorAndVersion());
-                                    String updated =  TomlUtils.escapeTomlRightHandSide(matchedTuple.getUpdatedOperatorAndVersion());
+                                    String updated = TomlUtils.escapeTomlRightHandSide(matchedTuple.getUpdatedOperatorAndVersion());
 
                                     if (line.endsWith(original)) {
                                         line = line.replace(original, updated);
