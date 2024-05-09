@@ -5,12 +5,6 @@ import java.util.List;
 
 public class RetrieveWheelsTestMojo extends RetrieveWheelsMojo{
 
-    private File sampleWheelFile;
-
-    public RetrieveWheelsTestMojo(File sampleWheelFile) {
-        this.sampleWheelFile = sampleWheelFile;
-    }
-
     void setWheelDependencies(List<WheelDependency> wheelDependencies) {
         this.wheelDependencies = wheelDependencies;
     }

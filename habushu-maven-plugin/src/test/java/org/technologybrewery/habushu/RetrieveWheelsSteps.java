@@ -1,10 +1,10 @@
 package org.technologybrewery.habushu;
 
 import io.cucumber.java.After;
+import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
-import io.cucumber.java.it.Ma;
 import org.apache.maven.project.MavenProject;
 import org.junit.jupiter.api.Assertions;
 
@@ -16,11 +16,8 @@ import java.util.stream.Stream;
 
 public class RetrieveWheelsSteps {
 
-    private RetrieveWheelsTestMojo mojo; 
-    File sampleWheelFile;
-    MavenProject sampleMavenProject = new MavenProject();
-    String setVersion;
-    String expectedVersion;
+    private RetrieveWheelsTestMojo mojo;
+    private MavenProject sampleMavenProject;
 
     @After
     public void cleanUp() {
@@ -29,26 +26,35 @@ public class RetrieveWheelsSteps {
 
     @Given("a Habushu configuration with no wheel dependencies entries")
     public void a_habushu_configuration_with_no_wheel_dependency_entries() throws Exception {
-        mojo = new RetrieveWheelsTestMojo(sampleWheelFile);
+        mojo = new RetrieveWheelsTestMojo();
         mojo.setWheelDependencies(new ArrayList<>());
     }
 
-    @Given("a Habushu configuration with a wheel dependency")
-    public void a_habushu_configuration_with_a_wheel_dependency_with_and() {
-        sampleWheelFile = new File(
-                "src/test/resources/testCacheDirectory/test-artifact/1.0/test_artifact-1.0.whl"
-        );
-        mojo = new RetrieveWheelsTestMojo(sampleWheelFile);
-        mojo.project = sampleMavenProject;
-        mojo.project.setVersion("1.0"); // separate out
+    @Given("a Habushu configuration with a wheel dependency on {string} version {string}")
+    public void aHabushuConfigurationWithAWheelDependencyOnVersion(String artifact, String version) {
+        mojo = new RetrieveWheelsTestMojo();
         List<WheelDependency> wheelDependencies = new ArrayList<>();
         WheelDependency wheelDependency = new WheelDependency();
-        wheelDependency.setArtifactId("test-artifact-x");
-        wheelDependency.setVersion("1.1"); // separate out
+
+        wheelDependency.setArtifactId(artifact);
+        if (version.equals("null")) {
+            wheelDependency.setVersion(null);
+        } else {
+            wheelDependency.setVersion(version);
+        }
         wheelDependency.setTargetDirectory("src/test/resources/testTargetDirectory");
+
         wheelDependencies.add(wheelDependency);
         mojo.setWheelDependencies(wheelDependencies);
     }
+    @And("a Maven project with version set to {string}")
+    public void aMavenProjectWithVersionSetTo(String version) {
+        sampleMavenProject = new MavenProject();
+        sampleMavenProject.setVersion(version);
+        mojo.project = sampleMavenProject;
+    }
+
+
 
     @When("Habushu executes retrieve wheel dependencies")
     public void habushu_executes_retrieve_wheel_dependencies() throws Exception {
@@ -58,41 +64,40 @@ public class RetrieveWheelsSteps {
     @Then("no wheel artifacts are copied")
     public void no_wheel_artifacts_are_copied() {
         //asset the wheel dependency target directory doesn't contain the poetry cache wheel artifact        
-        Assertions.assertFalse(checkIfWheelWasCopied(), "Expected the wheel artifact not to be copied, and it was!");
+        Assertions.assertFalse(checkIfWheelsWereCopied(), "Expected no copied wheels, but wheels are present.");
     }
 
     /**
-     * Asserts that the wheel artifact Identified by artifactId has been copied exactly into the target
-     * directory. For instance, if the passed in artifactId has a cooresponding directory in poetry cache
-     * a file at "poetry_cache_dir/artifacts/wheels/myWheelArtifact.whl" and the target directory has a file at 
-     * "targetDirectory/myWheelArtifact.whl", this method will pass.
-     */    
-    @Then("the wheel artifact is copied")
-    public void the_wheel_artifact_is_copied() {
-        //asset the wheel dependency target directory contains the poetry cache wheel artifact
-        Assertions.assertTrue(checkIfWheelWasCopied(), "Expected the wheel artifact in the target directory, but didn't find it!");
+     * Asserts that the wheel artifacts identified by artifactId have been copied exactly into the target directory.
+     */
+    @Then("the {string} version of the {string} wheels are copied")
+    public void theVersionOfTheWheelArtifactSAreCopied(String expectedVersion, String expectedArtifactId) {
+        // assert the wheel dependency target directory contains the poetry cache wheel artifact
+        Assertions.assertTrue(checkIfWheelsWereCopied(expectedVersion, expectedArtifactId), "Expected the wheel artifact in the target directory, but didn't find it!");
     }
 
-    private boolean checkIfWheelWasCopied(){
+    private boolean checkIfWheelsWereCopied(String expectedVersion, String expectedArtifactId){
         boolean isWheelCopied = false;
-        String artifactId = "";
-        String version = "";
-        String targetDirectory = "";
+        String targetDirectory;
         List<WheelDependency> wheelDependencies = mojo.getWheelDependencies();
         for (WheelDependency wd : wheelDependencies) {
-            artifactId = wd.getArtifactId();
-            version = wd.getVersion();
             targetDirectory = wd.getTargetDirectory();
-            File artifactPoetryCacheDirectory = mojo.getCachedWheelDirectory(artifactId, version);
+            // get the wheels from the artifact- and version-specific cache directory
+            File artifactPoetryCacheDirectory = mojo.getCachedWheelDirectory(expectedArtifactId, expectedVersion);
             List<File> wheelFiles = Stream.of(artifactPoetryCacheDirectory.listFiles())
                                           .filter(file -> file.getAbsolutePath().endsWith(".whl"))
                                           .map(File::getAbsoluteFile)
                                           .collect(Collectors.toList());    
-            for (File f : wheelFiles){
+            // ensure that the target directory has the same wheels
+            for (File f : wheelFiles) {
                 isWheelCopied = new File(targetDirectory, f.getName()).exists();
             }     
         }  
         return isWheelCopied;      
+    }
+
+    private boolean checkIfWheelsWereCopied() {
+        return checkIfWheelsWereCopied("", "");
     }
 
     private void resetTargetDirectory(){

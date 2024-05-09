@@ -160,6 +160,10 @@ public final class HabushuUtil {
 
     }
 
+    /**
+     *
+     * @param directory
+     */
     public static void clearDirectoryFiles(Path directory) {
         try {
             Files.walk(directory)
