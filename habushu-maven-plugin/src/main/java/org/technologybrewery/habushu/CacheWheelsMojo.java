@@ -40,16 +40,20 @@ public class CacheWheelsMojo extends AbstractHabushuMojo {
         getLog().info("Processing Cache Wheels..");
         try {
             File wheelSourceDirectory = getProjectBuildDirectory();
-            File poetryWheelCacheDirectory = getCachedWheelDirectory(project.getArtifactId());
+            // enforce artifact-specific and version-specific directories for wheels, similar to Maven
+            File poetryWheelCacheDirectory = getCachedWheelDirectory(project.getArtifactId(), project.getVersion());
             // conditional will throw an error if cache directory isn't created
             if (poetryWheelCacheDirectory.exists() || poetryWheelCacheDirectory.mkdirs()) {
                 List<File> wheelFiles = Stream.of(wheelSourceDirectory.listFiles())
                         .filter(file -> file.getAbsolutePath().endsWith(".whl"))
                         .map(File::getAbsoluteFile)
                         .collect(Collectors.toList());
+                // Clearing any files in the Poetry wheel cache directory ensures that the directory
+                // only houses wheel(s) that are artifact-specific and version-specific
+                HabushuUtil.clearDirectoryFiles(poetryWheelCacheDirectory.toPath());
                 for (File file : wheelFiles) {
                     HabushuUtil.copyFile(file.getPath(),
-                            String.format("%s/%s", poetryWheelCacheDirectory.toPath().toString(), file.getName()));
+                            String.format("%s/%s", poetryWheelCacheDirectory.toPath(), file.getName()));
                     getLog().info(String.format("Cached the %s file", file.getName()));
                 }
             }

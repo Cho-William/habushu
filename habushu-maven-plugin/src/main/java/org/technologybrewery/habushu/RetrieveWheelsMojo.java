@@ -17,7 +17,7 @@ import org.technologybrewery.habushu.util.HabushuUtil;
  * cache by artifactId and into a given targetDirectory during the 
  * {@link LifecyclePhase#VALIDATE} build phase. 
  *
- * @param wheelDependencies A List of Wheel Dependencies which will identify wheel 
+ * @param wheelDependencies A List of Wheel Dependencies which will identify wheel
  *                          files by {@WheelDependency.artifactId} in poetry cache and place them into 
  *                          a given {@WheelDependency.targetDirectory}. This logic specifically targets
  *                          wheel artifacts cached by the {@param cacheWheels} parameter and REQUIRES 
@@ -51,16 +51,23 @@ public class RetrieveWheelsMojo extends AbstractHabushuMojo {
         getLog().info(String.format("Processing %s Wheel Dependencies..", wheelDependencies.size()));
         try {
             for (WheelDependency wd : wheelDependencies) {
-                File poetryCacheWheelDirectory = getCachedWheelDirectory(wd.getArtifactId());
+                String version;
+                if (wd.getVersion() != null) {
+                    version = wd.getVersion();
+                } else {
+                    version = project.getVersion();
+                }
+
+                File poetryCacheWheelDirectory = getCachedWheelDirectory(wd.getArtifactId(), version);
                 String targetDirectory = wd.getTargetDirectory();
 
-                if(poetryCacheWheelDirectory.exists()){
+                if (poetryCacheWheelDirectory.exists()) {
                     List<File> wheelFiles = Stream.of(poetryCacheWheelDirectory.listFiles())
                             .filter(file -> file.getAbsolutePath().endsWith(".whl"))
                             .map(File::getAbsoluteFile)
                             .collect(Collectors.toList());
 
-                    if(wheelFiles.size()==0){
+                    if (wheelFiles.isEmpty()) {
                         getLog().warn(String.format("Did not find any %s wheels in poetry cache.", wd.getArtifactId()));
                         getLog().warn("Consider using the `cacheWheel` configuration to cache the wheel artifact before depending on it.");
                     } else {
@@ -69,7 +76,7 @@ public class RetrieveWheelsMojo extends AbstractHabushuMojo {
                             getLog().info(String.format("Retrieved the cached %s file", file.getName()));
                         }
                     }         
-                } else{
+                } else {
                     getLog().warn(String.format("Could not locate %s in poetry cache.", wd.getArtifactId()));
                     getLog().warn("Consider using the `cacheWheel` configuration to cache the wheel artifact before depending on it.");
                 }

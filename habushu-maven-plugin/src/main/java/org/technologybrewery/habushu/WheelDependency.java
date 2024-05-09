@@ -3,6 +3,7 @@ package org.technologybrewery.habushu;
 public class WheelDependency {
     private String artifactId;
     private String targetDirectory;
+    private String version = null;
 
     public WheelDependency() {
     }
@@ -21,5 +22,13 @@ public class WheelDependency {
 
     public void setTargetDirectory(String targetDirectory) {
         this.targetDirectory = targetDirectory;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
     }
 }

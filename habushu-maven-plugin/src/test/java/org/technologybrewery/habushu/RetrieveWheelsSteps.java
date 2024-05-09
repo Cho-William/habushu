@@ -4,6 +4,8 @@ import io.cucumber.java.After;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
+import io.cucumber.java.it.Ma;
+import org.apache.maven.project.MavenProject;
 import org.junit.jupiter.api.Assertions;
 
 import java.io.File;
@@ -15,7 +17,10 @@ import java.util.stream.Stream;
 public class RetrieveWheelsSteps {
 
     private RetrieveWheelsTestMojo mojo; 
-    File sampleWheelFile = new File("src/test/resources/testCacheDirectory/base-test-wheel.whl");
+    File sampleWheelFile;
+    MavenProject sampleMavenProject = new MavenProject();
+    String setVersion;
+    String expectedVersion;
 
     @After
     public void cleanUp() {
@@ -30,10 +35,16 @@ public class RetrieveWheelsSteps {
 
     @Given("a Habushu configuration with a wheel dependency")
     public void a_habushu_configuration_with_a_wheel_dependency_with_and() {
+        sampleWheelFile = new File(
+                "src/test/resources/testCacheDirectory/test-artifact/1.0/test_artifact-1.0.whl"
+        );
         mojo = new RetrieveWheelsTestMojo(sampleWheelFile);
+        mojo.project = sampleMavenProject;
+        mojo.project.setVersion("1.0"); // separate out
         List<WheelDependency> wheelDependencies = new ArrayList<>();
         WheelDependency wheelDependency = new WheelDependency();
-        wheelDependency.setArtifactId("testCacheDirectory");
+        wheelDependency.setArtifactId("test-artifact-x");
+        wheelDependency.setVersion("1.1"); // separate out
         wheelDependency.setTargetDirectory("src/test/resources/testTargetDirectory");
         wheelDependencies.add(wheelDependency);
         mojo.setWheelDependencies(wheelDependencies);
@@ -65,12 +76,14 @@ public class RetrieveWheelsSteps {
     private boolean checkIfWheelWasCopied(){
         boolean isWheelCopied = false;
         String artifactId = "";
-        String targetDirectory = ""; 
+        String version = "";
+        String targetDirectory = "";
         List<WheelDependency> wheelDependencies = mojo.getWheelDependencies();
         for (WheelDependency wd : wheelDependencies) {
             artifactId = wd.getArtifactId();
+            version = wd.getVersion();
             targetDirectory = wd.getTargetDirectory();
-            File artifactPoetryCacheDirectory = mojo.getCachedWheelDirectory(artifactId);
+            File artifactPoetryCacheDirectory = mojo.getCachedWheelDirectory(artifactId, version);
             List<File> wheelFiles = Stream.of(artifactPoetryCacheDirectory.listFiles())
                                           .filter(file -> file.getAbsolutePath().endsWith(".whl"))
                                           .map(File::getAbsoluteFile)

@@ -23,8 +23,9 @@ public class RetrieveWheelsTestMojo extends RetrieveWheelsMojo{
         return getPoetryCacheDirectory();
     }
 
-    public File getCachedWheelDirectory(String artifactId){
+    @Override
+    public File getCachedWheelDirectory(String artifactId, String version){
         String baseDirectory = new File("").getAbsolutePath();
-        return new File(baseDirectory+"/src/test/resources/" + artifactId);
+        return new File(baseDirectory+"/src/test/resources/testCacheDirectory/" + artifactId + "/" + version);
     }
 }

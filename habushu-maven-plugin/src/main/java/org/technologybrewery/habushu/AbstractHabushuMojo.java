@@ -287,11 +287,16 @@ public abstract class AbstractHabushuMojo extends AbstractMojo {
      *
      * @return the poetry cache directory path as a FILE object.  
      */
-    public File getCachedWheelDirectory(String artifactId) {
+    public File getCachedWheelDirectory(String artifactId, String version) {
         try {
             PoetryCommandHelper poetryHelper = createPoetryCommandHelper();
             String poetryCacheDirectoryPath = poetryHelper.getPoetryCacheDirectoryPath();
-            return new File(String.format("%s/cache/repositories/wheels/%s", poetryCacheDirectoryPath, artifactId));
+            return new File(String.format(
+                    "%s/cache/repositories/wheels/%s/%s",
+                    poetryCacheDirectoryPath,
+                    artifactId,
+                    version
+            ));
         } catch (Exception e) {
             throw new HabushuException("Could not get the Poetry Cache Wheel directory!", e);
         }
