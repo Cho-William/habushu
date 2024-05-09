@@ -7,9 +7,11 @@ import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import org.apache.maven.project.MavenProject;
 import org.junit.jupiter.api.Assertions;
+import org.technologybrewery.habushu.util.HabushuUtil;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -17,11 +19,11 @@ import java.util.stream.Stream;
 public class RetrieveWheelsSteps {
 
     private RetrieveWheelsTestMojo mojo;
-    private MavenProject sampleMavenProject;
+    private final String targetDirectory = "src/test/resources/testTargetDirectory/";
 
     @After
     public void cleanUp() {
-        resetTargetDirectory();
+        HabushuUtil.clearDirectoryFiles(new File(targetDirectory).toPath());
     }
 
     @Given("a Habushu configuration with no wheel dependencies entries")
@@ -42,14 +44,14 @@ public class RetrieveWheelsSteps {
         } else {
             wheelDependency.setVersion(version);
         }
-        wheelDependency.setTargetDirectory("src/test/resources/testTargetDirectory");
+        wheelDependency.setTargetDirectory(targetDirectory);
 
         wheelDependencies.add(wheelDependency);
         mojo.setWheelDependencies(wheelDependencies);
     }
     @And("a Maven project with version set to {string}")
     public void aMavenProjectWithVersionSetTo(String version) {
-        sampleMavenProject = new MavenProject();
+        MavenProject sampleMavenProject = new MavenProject();
         sampleMavenProject.setVersion(version);
         mojo.project = sampleMavenProject;
     }
@@ -63,8 +65,8 @@ public class RetrieveWheelsSteps {
 
     @Then("no wheel artifacts are copied")
     public void no_wheel_artifacts_are_copied() {
-        //asset the wheel dependency target directory doesn't contain the poetry cache wheel artifact        
-        Assertions.assertFalse(checkIfWheelsWereCopied(), "Expected no copied wheels, but wheels are present.");
+        //assert the wheel dependency target directory does not contain the poetry cache wheel artifact
+        Assertions.assertTrue(checkIfTargetHasNoWheels(), "Expected no copied wheels, but at least one wheel present.");
     }
 
     /**
@@ -84,10 +86,7 @@ public class RetrieveWheelsSteps {
             targetDirectory = wd.getTargetDirectory();
             // get the wheels from the artifact- and version-specific cache directory
             File artifactPoetryCacheDirectory = mojo.getCachedWheelDirectory(expectedArtifactId, expectedVersion);
-            List<File> wheelFiles = Stream.of(artifactPoetryCacheDirectory.listFiles())
-                                          .filter(file -> file.getAbsolutePath().endsWith(".whl"))
-                                          .map(File::getAbsoluteFile)
-                                          .collect(Collectors.toList());    
+            List<File> wheelFiles = getWheelFiles(artifactPoetryCacheDirectory);
             // ensure that the target directory has the same wheels
             for (File f : wheelFiles) {
                 isWheelCopied = new File(targetDirectory, f.getName()).exists();
@@ -96,12 +95,27 @@ public class RetrieveWheelsSteps {
         return isWheelCopied;      
     }
 
-    private boolean checkIfWheelsWereCopied() {
-        return checkIfWheelsWereCopied("", "");
+    private boolean checkIfTargetHasNoWheels() {
+        boolean targetHasNoWheels = true;
+        List<WheelDependency> wheelDependencies = mojo.getWheelDependencies();
+        for (WheelDependency wd : wheelDependencies) {
+            File targetDirectory = new File(wd.getTargetDirectory());
+            List<File> wheelFiles = getWheelFiles(targetDirectory);
+            if (!wheelFiles.isEmpty()) {
+                targetHasNoWheels = false;
+            }
+        }
+        return targetHasNoWheels;
     }
 
-    private void resetTargetDirectory(){
-        File baseTestWheelFile = new File("src/test/resources/testTargetDirectory/base-test-wheel.whl");
-        if(baseTestWheelFile.exists()) baseTestWheelFile.delete();
+    private static List<File> getWheelFiles(File directory) {
+        if (directory == null || !directory.isDirectory()) {
+            return Collections.emptyList();
+        }
+        List<File> wheelFiles = Stream.of(directory.listFiles())
+                .filter(file -> file.getAbsolutePath().endsWith(".whl"))
+                .map(File::getAbsoluteFile)
+                .collect(Collectors.toList());
+        return wheelFiles;
     }
 }

@@ -12,7 +12,7 @@ Feature: Test wheel dependencies capabilities
     Then the "1.0" version of the "test-artifact" wheels are copied
 
   Scenario: Specific version of wheel dependencies are copied when version is specified
-    Given a Habushu configuration with a wheel dependency on "test-artifact" version "1.1"
+    Given a Habushu configuration with a wheel dependency on "test-artifact" version "2.0"
     And a Maven project with version set to "1.0"
     When Habushu executes retrieve wheel dependencies
-    Then the "1.1" version of the "test-artifact" wheels are copied
+    Then the "2.0" version of the "test-artifact" wheels are copied
