@@ -34,7 +34,7 @@ if [[ "$?" -ne 0 ]] ; then
 fi
 
 echo "///////////  Rebuild Habushu modules ///////////"
-mvn clean install -Pbootstrap -Dmaven.build.cache.enabled=false && mvn clean install -Dmaven.build.cache.enabled=false
+mvn clean install -Pbootstrap -Dmaven.build.cache.enabled=false && mvn clean install -Dmaven.build.cache.enabled=false -Dhabushu.usePyenv=false
 
 if [[ "$?" -ne 0 ]] ; then
   echo 'Rebuilding Habushu failed!'; exit 1
@@ -63,7 +63,7 @@ if [[ "$?" -ne 0 ]] ; then
 fi
 
 echo "/////////// Rebuild Habushu modules ///////////"
-mvn clean install -Pbootstrap && mvn clean install
+mvn clean install -Pbootstrap && mvn clean install -Dhabushu.usePyenv=false
 
 if [[ "$?" -ne 0 ]] ; then
   echo 'Rebuilding Habushu failed!'; exit 1
