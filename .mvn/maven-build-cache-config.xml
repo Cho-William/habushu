@@ -19,7 +19,7 @@
     <input>
         <global>
             <glob>
-                {*.java,*.xml,*.proto,*.properties,*.py,*.txt,*.toml,.env*,*.feature}
+                {*.java,*.xml,*.proto,*.properties,*.py,*.txt,*.toml,.env*,*.feature,*.json}
             </glob>
             <includes>
                 <include>src/</include>
