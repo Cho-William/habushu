@@ -10,6 +10,7 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.project.MavenProject;
 import org.technologybrewery.habushu.util.HabushuUtil;
 
 /**
@@ -55,7 +56,7 @@ public class RetrieveWheelsMojo extends AbstractHabushuMojo {
                 if (wd.getVersion() != null) {
                     version = wd.getVersion();
                 } else {
-                    version = project.getVersion();
+                    version = getRootPomVersion();
                 }
 
                 File poetryCacheWheelDirectory = getCachedWheelDirectory(wd.getArtifactId(), version);
@@ -83,6 +84,20 @@ public class RetrieveWheelsMojo extends AbstractHabushuMojo {
             }
         } catch (Exception e) {
             throw new HabushuException("Could not process Wheel Dependencies!", e);
+        }
+    }
+
+    private String getRootPomVersion() {
+        MavenProject currentProject = project;
+        // Traverse up to the root pom in the current project structure
+        while (currentProject.hasParent()) {
+            currentProject = currentProject.getParent();
+        }
+        // Check if it has an external parent; if not, return the project's root pom version
+        if (currentProject.getParentArtifact() != null) {
+            return currentProject.getParentArtifact().getVersion();
+        } else {
+            return currentProject.getVersion();
         }
     }
 
