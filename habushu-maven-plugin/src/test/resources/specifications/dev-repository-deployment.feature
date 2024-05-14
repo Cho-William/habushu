@@ -32,3 +32,23 @@ Feature: Provides ability to push .dev versions to a different repository than r
       | https://update.myrepo.com/           |                              | https://update.myrepo.com/                   |
       | https://update.myrepo.com            |                              | https://update.myrepo.com/                   |
 
+  Scenario Outline: Add trailing slash to URL for PEP-0694 compliance
+    Given a custom dev repository is configured to "<repositoryUrl>"
+    When the Habushu deploy phase executes
+    Then the repository url of "<finalRepositoryUrl>" contains a trailing slash
+
+    Examples:
+      | repositoryUrl             | finalRepositoryUrl         |
+      | http://test.pypi.org      | http://test.pypi.org/      |
+      | http://test.pypi.org/     | http://test.pypi.org/      |
+      | https://update.myrepo.com | https://update.myrepo.com/ |
+
+  Scenario: Ensure trailing slash handles default case where a null URL is passed to poetry for default handling without issue
+    Given a null URL
+    When the Habushu deploy phase executes
+    Then the repository url is null
+
+  Scenario: Ensure trailing slash handles default case where an empty URL is passed to poetry for default handling without issue
+    Given an empty URL
+    When the Habushu deploy phase executes
+    Then the repository url is empty
