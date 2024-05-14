@@ -227,8 +227,8 @@ public class PublishToPyPiRepoMojo extends AbstractHabushuMojo {
         return addTrailingSlash(repoUrl);
     }
 
-    private static String addTrailingSlash(String inputUrl) {
-        if (!inputUrl.endsWith("/")) {
+    static String addTrailingSlash(String inputUrl) {
+        if (StringUtils.isNotBlank(inputUrl) && !StringUtils.endsWith(inputUrl, "/")) {
             // PEP-0694 likes a trailing slash:
             inputUrl += "/";
         }
