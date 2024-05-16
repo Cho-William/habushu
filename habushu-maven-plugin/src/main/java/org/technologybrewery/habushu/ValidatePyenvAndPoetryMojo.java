@@ -7,6 +7,7 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.codehaus.plexus.util.StringUtils;
 
 /**
  * Attaches to the {@link LifecyclePhase#VALIDATE} phase to ensure that the all
@@ -45,13 +46,45 @@ public class ValidatePyenvAndPoetryMojo extends AbstractHabushuMojo {
 
     @Override
     public void doExecute() throws MojoExecutionException, MojoFailureException {
-        String username = findUsernameForServer();
-        String password = findPasswordForServer();
 
         PyenvAndPoetrySetup configureTools = new PyenvAndPoetrySetup(pythonVersion, usePyenv,
                 patchInstallScript, getPoetryProjectBaseDir(), rewriteLocalPathDepsInArchives,
-                username, password, pypiRepoId, getLog());
+                getLog());
+
         configureTools.execute();
+
+        configurePriavtePyPiRepositoryCredentials(configureTools);
+        configurePrivateDevPyPiRepositoryCredentials(configureTools);
+
+        configureTools.installPoetryMonorepoDependencyPlugin();
+    }
+
+    private void configurePrivateDevPyPiRepositoryCredentials(PyenvAndPoetrySetup configureTools) throws MojoExecutionException {
+        if (useDevRepository) {
+            if (!TEST_PYPI_REPOSITORY_URL.equals(devRepositoryUrl)){
+                String pypiDevRepoIdUsername = findUsernameForServer(devRepositoryId);
+                String pypiDevRepoIdPassword = findPasswordForServer(devRepositoryId);
+                configureTools.registerRepositoryToSupportAuthenticatedDependencyResolution(devRepositoryId,
+                        pypiDevRepoIdUsername, pypiDevRepoIdPassword);
+            } else {
+                logSkipRationale(devRepositoryUrl);
+            }
+        }
+    }
+
+    private void configurePriavtePyPiRepositoryCredentials(PyenvAndPoetrySetup configureTools) throws MojoExecutionException {
+        if (StringUtils.isNotEmpty(pypiRepoUrl) && !"https://pypi.org".equals(pypiRepoUrl)) {
+            String pypiRepoIdUsername = findUsernameForServer(pypiRepoId);
+            String pypiRepoIdPassword = findPasswordForServer(pypiRepoId);
+            configureTools.registerRepositoryToSupportAuthenticatedDependencyResolution(pypiRepoId, pypiRepoIdUsername,
+                    pypiRepoIdPassword);
+        } else {
+            logSkipRationale(pypiRepoUrl);
+        }
+    }
+
+    private void logSkipRationale(String repositoryUrl) {
+        getLog().debug("Skipping configuration for pulling from public readable repo: " + repositoryUrl);
     }
 
 }

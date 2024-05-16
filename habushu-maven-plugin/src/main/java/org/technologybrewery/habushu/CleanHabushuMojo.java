@@ -108,13 +108,9 @@ public class CleanHabushuMojo extends CleanMojo {
 
     private void clean() throws MojoExecutionException {
         if (deleteVirtualEnv) {
-            try {
-                PyenvAndPoetrySetup configureTools = new PyenvAndPoetrySetup(pythonVersion, usePyenv,
-                        patchInstallScript, workingDirectory, rewriteLocalPathDepsInArchives, getLog());
-                configureTools.execute();
-            } catch (MojoFailureException e) {
-                throw new MojoExecutionException("Could not configure Pyenv or Poetry in the clean plugin!", e);
-            }
+            PyenvAndPoetrySetup configureTools = new PyenvAndPoetrySetup(pythonVersion, usePyenv,
+                    patchInstallScript, workingDirectory, rewriteLocalPathDepsInArchives, getLog());
+            configureTools.execute();
 
             PoetryCommandHelper poetryHelper = new PoetryCommandHelper(this.workingDirectory);
 
