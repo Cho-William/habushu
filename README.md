@@ -578,6 +578,17 @@ Typically enabled when running CI, this configuration enables skipping the updat
 
 Default: `false`
 
+#### useInProjectVirtualEnvironment ####
+
+Enables Poetry's `virtualenvs.in-project` for this project. If configured with an existing virtual environment elsewhere, 
+the virtual environments will be migrated to this approach during the clean phase of the build.
+
+While generally easier to find and use for tasks like debugging, having your virtual environment co-located in
+your project may be less useful for executions like CI builds where you may want to centrally caches virtual
+environments from a central location.
+
+Default: `true`
+
 #### deleteVirtualEnv ####
 
 Enables the explicit deletion of the virtual environment that is created/managed by Poetry.

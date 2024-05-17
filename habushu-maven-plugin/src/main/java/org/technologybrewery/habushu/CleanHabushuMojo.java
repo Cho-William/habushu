@@ -1,21 +1,21 @@
 package org.technologybrewery.habushu;
 
-import java.io.File;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.clean.CleanMojo;
 import org.apache.maven.plugins.clean.Fileset;
 import org.technologybrewery.habushu.exec.PoetryCommandHelper;
+import org.technologybrewery.habushu.util.HabushuUtil;
+
+import java.io.File;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Overrides the default {@link CleanMojo} behavior to additionally delete the
@@ -97,6 +97,18 @@ public class CleanHabushuMojo extends CleanMojo {
     @Parameter(defaultValue = "false", property = "habushu.rewriteLocalPathDepsInArchives")
     protected boolean rewriteLocalPathDepsInArchives;
 
+    /**
+     * Whether to configure Poetry's {@code virtualenvs.in-project} value for this project.
+     * If configured, virtual environments will be migrated to this approach during the clean phase of the build.
+     * <p>
+     * While generally easier to find and use for tasks like debugging, having your virtual environment co-located in
+     * your project may be less useful for executions like CI builds where you may want to centrally caches virtual
+     * environments from a central location.
+     */
+    @Parameter(defaultValue = "true", property = "habushu.useInProjectVirtualEnvironment")
+    protected boolean useInProjectVirtualEnvironment;
+
+
     @Override
     public void execute() throws MojoExecutionException {
         if ("habushu".equals(packaging)) {
@@ -107,35 +119,52 @@ public class CleanHabushuMojo extends CleanMojo {
     }
 
     private void clean() throws MojoExecutionException {
-        if (deleteVirtualEnv) {
-            PyenvAndPoetrySetup configureTools = new PyenvAndPoetrySetup(pythonVersion, usePyenv,
-                    patchInstallScript, workingDirectory, rewriteLocalPathDepsInArchives, getLog());
-            configureTools.execute();
+        List<Fileset> filesetsToDelete = new ArrayList<>();
+        boolean removeVenvManually = false;
 
-            PoetryCommandHelper poetryHelper = new PoetryCommandHelper(this.workingDirectory);
+        String virtualEnvFullPath = findCurrentVirtualEnvironmentFullPath();
+        virtualEnvFullPath = getCleanVirtualEnvironmentPath(virtualEnvFullPath);
 
-            String virtualEnvFullPath = null;
-            try {
-                virtualEnvFullPath = poetryHelper.execute(Arrays.asList("env", "list", "--full-path"));
-            } catch (RuntimeException e) {
-                getLog().debug("Could not retrieve Poetry-managed virtual environment path - it likely does not exist",
-                        e);
+        String inVirtualEnvironmentPath = HabushuUtil.getInProjectVirtualEnvironmentPath(this.workingDirectory);
+        File venv = new File(inVirtualEnvironmentPath);
+
+        if (this.useInProjectVirtualEnvironment) {
+            getLog().debug("`in-project` virtual environment configured for this project");
+            if (StringUtils.isNotBlank(virtualEnvFullPath) && !inVirtualEnvironmentPath.equals(virtualEnvFullPath)) {
+                getLog().warn("'in-project' virtual environment is configured, but an external virtual environment was found!");
+                getLog().warn("Deleting external virtual environment: " + virtualEnvFullPath);
+                deleteVirtualEnv = true;
             }
-
-            if (StringUtils.isBlank(virtualEnvFullPath)) {
-                getLog().warn("No Poetry virtual environment was detected for deletion.");
-            } else {
-                // Remove (Activated) from path in 1.3.x and higher versions:
-                virtualEnvFullPath = virtualEnvFullPath.replace(" (Activated)", StringUtils.EMPTY);
-
-                String virtualEnvName = new File(virtualEnvFullPath).getName();
-                if (StringUtils.isNotBlank(virtualEnvName)) {
-                    poetryHelper.execute(Arrays.asList("env", "remove", virtualEnvName));
-                }
+        } else {
+            if (venv.exists()) {
+                getLog().warn("'in-project' virtual environment is NOT configured, but an 'in-project' virtual environment was found!");
+                getLog().warn("Deleting 'in-project' virtual environment: " + virtualEnvFullPath);
+                deleteVirtualEnv = true;
             }
         }
 
-        List<Fileset> filesetsToDelete = new ArrayList<>();
+        if (deleteVirtualEnv) {
+            if (StringUtils.isBlank(virtualEnvFullPath)) {
+                getLog().warn("No Poetry virtual environment was detected for deletion.");
+            } else {
+
+                String virtualEnvName = new File(virtualEnvFullPath).getName();
+                if (StringUtils.isNotBlank(virtualEnvName)) {
+                    PoetryCommandHelper poetryHelper = new PoetryCommandHelper(this.workingDirectory);
+                    List<String> arguments = new ArrayList<>();
+                    arguments.add("env");
+                    arguments.add("remove");
+                    if (!".venv".equals(virtualEnvName)) {
+                        arguments.add(virtualEnvName);
+                    } else {
+                        // While Poetry 1.8.3 and lower will unregister the .venv virtual environment, it doesn't
+                        // remove it, creating confusion:
+                        removeVenvManually = true;
+                    }
+                    poetryHelper.execute(arguments);
+                }
+            }
+        }
 
         try {
             Fileset distArchivesFileset = createFileset(distDirectory);
@@ -143,6 +172,11 @@ public class CleanHabushuMojo extends CleanMojo {
 
             Fileset targetArchivesFileset = createFileset(targetDirectory);
             filesetsToDelete.add(targetArchivesFileset);
+
+            if (removeVenvManually) {
+                filesetsToDelete.add(createFileset(venv));
+            }
+
         } catch (IllegalAccessException e) {
             throw new MojoExecutionException("Could not write to private field in Fileset class.", e);
         }
@@ -152,6 +186,34 @@ public class CleanHabushuMojo extends CleanMojo {
 
         setPrivateParentField("filesets", filesetsToDelete.toArray(new Fileset[0]));
         super.execute();
+    }
+
+    /**
+     * Removes (Activated) from path in 1.3.x and higher versions.
+     *
+     * @param virtualEnvFullPath path to clean
+     * @return cleaned path
+     */
+    private static String getCleanVirtualEnvironmentPath(String virtualEnvFullPath) {
+        return StringUtils.replace(virtualEnvFullPath, " (Activated)", StringUtils.EMPTY);
+
+    }
+
+    private String findCurrentVirtualEnvironmentFullPath() throws MojoExecutionException {
+        String virtualEnvFullPath = null;
+        PyenvAndPoetrySetup configureTools = new PyenvAndPoetrySetup(pythonVersion, usePyenv,
+                patchInstallScript, workingDirectory, rewriteLocalPathDepsInArchives, getLog());
+        configureTools.execute();
+
+        try {
+            PoetryCommandHelper poetryHelper = new PoetryCommandHelper(this.workingDirectory);
+            virtualEnvFullPath = poetryHelper.execute(Arrays.asList("env", "list", "--full-path"));
+        } catch (RuntimeException e) {
+            getLog().debug("Could not retrieve Poetry-managed virtual environment path - it likely does not exist",
+                    e);
+        }
+
+        return virtualEnvFullPath;
     }
 
     /**
