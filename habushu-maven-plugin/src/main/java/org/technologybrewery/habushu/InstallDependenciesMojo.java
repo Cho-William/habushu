@@ -6,6 +6,7 @@ import com.electronwill.nightconfig.core.file.FileConfig;
 import com.vdurmont.semver4j.Semver;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.client.utils.URIBuilder;
@@ -14,7 +15,9 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.checkerframework.checker.units.qual.A;
 import org.technologybrewery.habushu.exec.PoetryCommandHelper;
+import org.technologybrewery.habushu.util.HabushuUtil;
 import org.technologybrewery.habushu.util.TomlReplacementTuple;
 import org.technologybrewery.habushu.util.TomlUtils;
 
@@ -121,9 +124,22 @@ public class InstallDependenciesMojo extends AbstractHabushuMojo {
     @Parameter(defaultValue = "false", property = "habushu.failOnManagedDependenciesMismatches")
     protected boolean failOnManagedDependenciesMismatches;
 
+    /**
+     * Whether to configure Poetry's {@code virtualenvs.in-project} value for this project.
+     * If configured, virtual environments will be migrated to this approach during the clean phase of the build.
+     *
+     * While generally easier to find and use for tasks like debugging, having your virtual environment co-located in
+     * your project may be less useful for executions like CI builds where you may want to centrally caches virtual
+     * environments from a central location.
+     */
+    @Parameter(defaultValue = "true", property = "habushu.useInProjectVirtualEnvironment")
+    protected boolean useInProjectVirtualEnvironment;
+
     @Override
     public void doExecute() throws MojoExecutionException, MojoFailureException {
         PoetryCommandHelper poetryHelper = createPoetryCommandHelper();
+
+        setUpInProjectVirtualEnvironment(poetryHelper);
 
         processManagedDependencyMismatches();
 
@@ -154,6 +170,37 @@ public class InstallDependenciesMojo extends AbstractHabushuMojo {
 
         getLog().info("Installing dependencies...");
         poetryHelper.executePoetryCommandAndLogAfterTimeout(installCommand, 2, TimeUnit.MINUTES);
+    }
+
+    private void setUpInProjectVirtualEnvironment(PoetryCommandHelper poetryHelper) throws MojoExecutionException {
+        String inProjectVirtualEnvironmentPath = HabushuUtil.getInProjectVirtualEnvironmentPath(getPoetryProjectBaseDir());
+        File venv = new File(inProjectVirtualEnvironmentPath);
+        if (this.useInProjectVirtualEnvironment) {
+            if (!venv.exists()) {
+                getLog().info("Configuring Poetry to use an in-project virtual environment...");
+                configureVirtualEnvironmentsInProject(true);
+            }
+        } else {
+            List<String> arguments = new ArrayList<>();
+            arguments.add("config");
+            arguments.add("virtualenvs.in-project");
+            arguments.add("--local");
+            String currentInProjectSetting = poetryHelper.execute(arguments);
+
+            if (Boolean.TRUE.equals(Boolean.valueOf(currentInProjectSetting))) {
+                configureVirtualEnvironmentsInProject(false);
+            }
+        }
+    }
+
+    private void configureVirtualEnvironmentsInProject(boolean enable) throws MojoExecutionException {
+        PoetryCommandHelper poetryHelper = createPoetryCommandHelper();
+        List<String> arguments = new ArrayList<>();
+        arguments.add("config");
+        arguments.add("virtualenvs.in-project");
+        arguments.add(Boolean.toString(enable));
+        arguments.add("--local");
+        poetryHelper.executeAndLogOutput(arguments);
     }
 
     private void prepareRepositoryForInstallation(String repoId, String repoUrl) throws MojoExecutionException {

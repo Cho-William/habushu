@@ -1,20 +1,16 @@
 package org.technologybrewery.habushu.util;
 
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.technologybrewery.habushu.HabushuException;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
-
-import org.apache.commons.io.FileUtils;
-import org.apache.maven.settings.Server;
-import org.apache.maven.settings.Settings;
-import org.technologybrewery.habushu.HabushuException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sonatype.plexus.components.cipher.PlexusCipherException;
-import org.sonatype.plexus.components.sec.dispatcher.SecDispatcherException;
 
 /**
  * Contains utility functionality for Habushu, including bash script execution
@@ -30,7 +26,7 @@ public final class HabushuUtil {
 
     /**
      * Run the bash script found at the given location without parameters.
-     * 
+     *
      * @param bashScriptPath absolute path to the bash script
      */
     public static void runBashScript(String bashScriptPath) {
@@ -39,7 +35,7 @@ public final class HabushuUtil {
 
     /**
      * Run the bash script found at the given location with the provided parameters.
-     * 
+     *
      * @param bashScriptPath absolute path to the bash script
      * @param parameters     script parameters
      * @param debug          true to log script output as DEBUG, otherwise logged as
@@ -94,7 +90,7 @@ public final class HabushuUtil {
 
     /**
      * Writes a given list of lines to the file located at the provided file path.
-     * 
+     *
      * @param commands the newline-delineated list of String file lines
      * @param filePath the path to the file
      */
@@ -111,7 +107,7 @@ public final class HabushuUtil {
     /**
      * Creates a new file at the targeted file location and gives full file
      * permissions to the current user.
-     * 
+     *
      * @param newFile the file location
      */
     public static void createFileAndGivePermissions(File newFile) {
@@ -132,7 +128,7 @@ public final class HabushuUtil {
 
     /**
      * Gives full read, write, and execute permissions to a file.
-     * 
+     *
      * @param filePath the path to the file
      */
     public static void giveFullFilePermissions(String filePath) {
@@ -147,7 +143,7 @@ public final class HabushuUtil {
 
     /**
      * Copies specified file into specified path.
-     * 
+     *
      * @param filePath the path to the file to copy
      * @param destinationFilePath the path to where the new copy should be created
      */
@@ -160,5 +156,15 @@ public final class HabushuUtil {
             throw new HabushuException("Could not copy the file ["+ sourceFilePath +"] to [" + destinationFilePath +"]!", ioe);
         }
 
-    }    
+    }
+
+    /**
+     * Returns the full path for a .venv in-project virtual environment.
+     *
+     * @param workingDirectory the base directory of the current project
+     * @return the current project's in-project virtual environment path
+     */
+    public static String getInProjectVirtualEnvironmentPath(File workingDirectory) {
+        return workingDirectory.getAbsolutePath() + "/.venv";
+    }
 }
