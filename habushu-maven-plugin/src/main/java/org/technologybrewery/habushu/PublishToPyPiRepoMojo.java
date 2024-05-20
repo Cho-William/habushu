@@ -5,7 +5,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
+import com.google.common.base.Predicates;
+import io.github.itning.retry.RetryException;
+import io.github.itning.retry.Retryer;
+import io.github.itning.retry.RetryerBuilder;
+import io.github.itning.retry.strategy.stop.StopStrategies;
+import io.github.itning.retry.strategy.stop.StopStrategy;
+import io.github.itning.retry.strategy.wait.WaitStrategies;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -45,6 +55,8 @@ import org.technologybrewery.habushu.exec.PoetryCommandHelper;
  */
 @Mojo(name = "publish-to-pypi-repo", defaultPhase = LifecyclePhase.DEPLOY)
 public class PublishToPyPiRepoMojo extends AbstractHabushuMojo {
+
+    private static final String VERSION = "version";
 
     /**
      * {@link DateTimeFormatter} compliant pattern that configures the numeric
@@ -90,6 +102,27 @@ public class PublishToPyPiRepoMojo extends AbstractHabushuMojo {
     @Parameter(property = "habushu.devRepositoryUrlUploadSuffix", defaultValue = "legacy/")
     protected String devRepositoryUrlUploadSuffix;
 
+    /**
+     * Specifies the number of times a push to the configured PyPI repository will be attempted before stopping (inclusive
+     * of the initial attempt). While this defaults to three and is fully configurable, it can be set to zero to never
+     * retry or set to any negative number for unlimited retries.  Unlimited retries will follow a fibonacci backoff
+     * interval.
+     */
+    @Parameter(property = "habushu.pyPiPushRetries", defaultValue = "3")
+    protected int pypiPushRetries = 3;
+
+    /**
+     * A multiplier, in milliseconds, to apply to the retry wait time (e.g., round of fibonacci).
+     */
+    @Parameter(property = "habushu.pypiPushRetryMultiplier", defaultValue = "15000")
+    protected long pypiPushRetryMultiplier;
+
+    /**
+     * Maximum time to wait for a retry, in minutes, even if the backoff algorithm is above this threshold.
+     */
+    @Parameter(property = "habushu.pypiPushRetryMaxTimeout", defaultValue = "3")
+    protected long pypiPushRetryMaxTimeout;
+
     @Override
     public void doExecute() throws MojoExecutionException, MojoFailureException {
         if (this.skipDeploy) {
@@ -103,19 +136,19 @@ public class PublishToPyPiRepoMojo extends AbstractHabushuMojo {
 
         String pomVersion = project.getVersion();
         if (this.overridePackageVersion && isPomVersionSnapshot(pomVersion)) {
-            String currentPythonPackageVersion = poetryHelper.execute(Arrays.asList("version", "-s"));
+            String currentPythonPackageVersion = poetryHelper.execute(Arrays.asList(VERSION, "-s"));
 
             String snapshotVersionToPublish = getPythonPackageVersion(pomVersion, true,
                     snapshotNumberDateFormatPattern);
             try {
                 getLog().info(
                         String.format("Setting version of Poetry package to publish to %s", snapshotVersionToPublish));
-                poetryHelper.executeAndLogOutput(Arrays.asList("version", snapshotVersionToPublish));
+                poetryHelper.executeAndLogOutput(Arrays.asList(VERSION, snapshotVersionToPublish));
                 publishPackage(poetryHelper, true);
             } finally {
                 getLog().info(
                         String.format("Resetting Poetry package version back to %s", currentPythonPackageVersion));
-                poetryHelper.executeAndLogOutput(Arrays.asList("version", currentPythonPackageVersion));
+                poetryHelper.executeAndLogOutput(Arrays.asList(VERSION, currentPythonPackageVersion));
             }
 
         } else {
@@ -144,7 +177,6 @@ public class PublishToPyPiRepoMojo extends AbstractHabushuMojo {
      */
     protected void publishPackage(PoetryCommandHelper poetryHelper, boolean rebuildPackage)
             throws MojoExecutionException {
-        List<Pair<String, Boolean>> publishToRepoWithCredsArgs = Collections.emptyList();
 
         boolean publishToDev = rebuildPackage && useDevRepository;
         if (publishToDev) {
@@ -174,17 +206,20 @@ public class PublishToPyPiRepoMojo extends AbstractHabushuMojo {
                     Arrays.asList("config", "--local", String.format("repositories.%s", repoId), repoUrl));
         }
 
+        List<Pair<String, Boolean>> publishToRepoWithCredsArgs = Collections.emptyList();
+
         if (StringUtils.isNotEmpty(username) && StringUtils.isNotEmpty(password)) {
-            publishToRepoWithCredsArgs = new ArrayList<Pair<String, Boolean>>();
+
+            publishToRepoWithCredsArgs = new ArrayList<>();
 
             if (!PUBLIC_PYPI_REPO_ID.equals(repoId)) {
-                publishToRepoWithCredsArgs.add(new ImmutablePair<String, Boolean>("--repository", false));
-                publishToRepoWithCredsArgs.add(new ImmutablePair<String, Boolean>(repoId, false));
+                publishToRepoWithCredsArgs.add(new ImmutablePair<>("--repository", false));
+                publishToRepoWithCredsArgs.add(new ImmutablePair<>(repoId, false));
             }
-            publishToRepoWithCredsArgs.add(new ImmutablePair<String, Boolean>("--username", false));
-            publishToRepoWithCredsArgs.add(new ImmutablePair<String, Boolean>(username, false));
-            publishToRepoWithCredsArgs.add(new ImmutablePair<String, Boolean>("--password", false));
-            publishToRepoWithCredsArgs.add(new ImmutablePair<String, Boolean>(password, true));
+            publishToRepoWithCredsArgs.add(new ImmutablePair<>("--username", false));
+            publishToRepoWithCredsArgs.add(new ImmutablePair<>(username, false));
+            publishToRepoWithCredsArgs.add(new ImmutablePair<>("--password", false));
+            publishToRepoWithCredsArgs.add(new ImmutablePair<>(password, true));
         }
 
         String publishCommand = rewriteLocalPathDepsInArchives ? "publish-rewrite-path-deps" : "publish";
@@ -194,12 +229,11 @@ public class PublishToPyPiRepoMojo extends AbstractHabushuMojo {
                 rewriteLocalPathDepsInArchives ? "with poetry-monorepo-dependency-plugin" : ""));
 
         if (!publishToRepoWithCredsArgs.isEmpty()) {
-            publishToRepoWithCredsArgs.add(0, new ImmutablePair<String, Boolean>(publishCommand, false));
+            publishToRepoWithCredsArgs.add(0, new ImmutablePair<>(publishCommand, false));
             if (rebuildPackage) {
-                publishToRepoWithCredsArgs.add(1, new ImmutablePair<String, Boolean>("--build", false));
+                publishToRepoWithCredsArgs.add(1, new ImmutablePair<>("--build", false));
             }
 
-            poetryHelper.executeWithSensitiveArgsAndLogOutput(publishToRepoWithCredsArgs);
         } else {
             getLog().warn(String.format(
                     "PyPI repository credentials not specified in <server> element in settings.xml with <id> of %s",
@@ -207,13 +241,70 @@ public class PublishToPyPiRepoMojo extends AbstractHabushuMojo {
             getLog().warn(
                     "Please populate settings.xml with PyPI credentials or ensure that Poetry is manually " +
                             "configured with the correct PyPI credentials (i.e. poetry config pypi-token.pypi my-token)");
-            List<String> publishToOfficialPypiRepoArgs = new ArrayList<>();
-            publishToOfficialPypiRepoArgs.add(publishCommand);
+            publishToRepoWithCredsArgs.add(new ImmutablePair<>(publishCommand, false));
             if (rebuildPackage) {
-                publishToOfficialPypiRepoArgs.add("--build");
+                publishToRepoWithCredsArgs.add(new ImmutablePair<>("--build", false));
             }
-            poetryHelper.executeAndLogOutput(publishToOfficialPypiRepoArgs);
         }
+
+        invokePublish(poetryHelper, publishToRepoWithCredsArgs);
+    }
+
+    protected void invokePublish(PoetryCommandHelper poetryHelper, List<Pair<String, Boolean>> publishToRepoWithCredsArgs) {
+        Callable<Boolean> callable = getPyPiPushCallable(poetryHelper, publishToRepoWithCredsArgs);
+        Retryer<Boolean> retryer = getRetryer();
+
+        try {
+            Boolean result = retryer.call(callable);
+
+            if (Boolean.FALSE.equals(result)) {
+                throw new HabushuException("Push to PyPI repository failed!");
+            }
+
+        } catch (RetryException e) {
+            throw new HabushuException("Exceeded retry setting of: " + pypiPushRetries, e);
+        } catch (ExecutionException e) {
+            throw new HabushuException("Could not execute PyPI push!", e);
+        }
+    }
+
+    protected Callable<Boolean> getPyPiPushCallable(PoetryCommandHelper poetryHelper, List<Pair<String, Boolean>> publishToRepoWithCredsArgs) {
+        Callable<Boolean> callable = new Callable<>() {
+            private boolean firstAttempt = true;
+
+            public Boolean call() throws Exception {
+                if (!firstAttempt) {
+                    publishToRepoWithCredsArgs.removeIf(arg -> "--build".equals(arg.getLeft()));
+                    getLog().debug("Removing build command from retry due to the general issue error described in https://github.com/python-poetry/cleo/issues/351");
+                } else {
+                    firstAttempt = false;
+                }
+
+                int result = poetryHelper.executeWithSensitiveArgsAndLogOutput(publishToRepoWithCredsArgs);
+                if (result != 0) {
+                    getLog().warn("PyPI Publish process result code: " + result);
+                }
+                return result == 0;
+            }
+        };
+
+        return callable;
+    }
+
+    protected Retryer<Boolean> getRetryer() {
+        RetryerBuilder<Boolean> retryBuilder = RetryerBuilder.<Boolean>newBuilder();
+
+        if (pypiPushRetries != 0) {
+            StopStrategy stopStrategy = (pypiPushRetries < 0) ? StopStrategies.neverStop()
+                    : StopStrategies.stopAfterAttempt(pypiPushRetries);
+
+            retryBuilder.retryIfResult(Predicates.<Boolean>equalTo(Boolean.FALSE))
+                    .retryIfRuntimeException()
+                    .withStopStrategy(stopStrategy)
+                    .withWaitStrategy(WaitStrategies.fibonacciWait(pypiPushRetryMultiplier, pypiPushRetryMaxTimeout, TimeUnit.MINUTES));
+        }
+
+        return retryBuilder.build();
     }
 
     String getRepositoryUrl(boolean publishToDev) {

@@ -109,6 +109,17 @@
             <artifactId>commons-io</artifactId>
             <version>2.16.1</version>
         </dependency>
+        <dependency>
+            <groupId>io.github.itning</groupId>
+            <artifactId>guava-retrying3</artifactId>
+            <version>3.0.3</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
 
         <!-- Provided Dependencies: -->
         <dependency>
