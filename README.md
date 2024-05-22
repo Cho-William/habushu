@@ -427,6 +427,14 @@ Member and `devRepositoryUrl` properties
 
 Default: `false`
 
+#### pypiPushRetries ####
+Specifies the number of times a push to the configured PyPI repository will be attempted before stopping (inclusive
+of the initial attempt). While this defaults to three and is fully configurable, it can be set to zero to never
+retry or set to any negative number for unlimited retries.  Unlimited retries will follow a fibonacci backoff
+interval.
+
+Default: `3`
+
 #### devRepositoryId ####
 
 Specifies the `<id>` of the `<server>` element declared within the utilized Maven `settings.xml` configuration that 
