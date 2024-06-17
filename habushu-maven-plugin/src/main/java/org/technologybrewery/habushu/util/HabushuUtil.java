@@ -1,9 +1,14 @@
 package org.technologybrewery.habushu.util;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.logging.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.technologybrewery.habushu.HabushuException;
+import org.technologybrewery.habushu.PyenvAndPoetrySetup;
+import org.technologybrewery.habushu.exec.PoetryCommandHelper;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -11,6 +16,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Arrays;
 
 /**
  * Contains utility functionality for Habushu, including bash script execution
@@ -167,4 +173,35 @@ public final class HabushuUtil {
     public static String getInProjectVirtualEnvironmentPath(File workingDirectory) {
         return workingDirectory.getAbsolutePath() + "/.venv";
     }
+
+
+	public static String findCurrentVirtualEnvironmentFullPath(String pythonVersion, boolean usePyenv,
+		   File patchInstallScript, File workingDirectory, boolean rewriteLocalPathDepsInArchives, Log log)
+            throws MojoExecutionException {
+		String virtualEnvFullPath = null;
+		PyenvAndPoetrySetup configureTools = new PyenvAndPoetrySetup(pythonVersion, usePyenv,
+				patchInstallScript, workingDirectory, rewriteLocalPathDepsInArchives, log);
+		configureTools.execute();
+
+		try {
+			PoetryCommandHelper poetryHelper = new PoetryCommandHelper(workingDirectory);
+			virtualEnvFullPath = poetryHelper.execute(Arrays.asList("env", "list", "--full-path"));
+		} catch (RuntimeException e) {
+			log.debug("Could not retrieve Poetry-managed virtual environment path - it likely does not exist",
+					e);
+		}
+
+		return virtualEnvFullPath;
+	}
+
+	/**
+	 * Removes (Activated) from path in 1.3.x and higher versions.
+	 *
+	 * @param virtualEnvFullPath path to clean
+	 * @return cleaned path
+	 */
+	public static String getCleanVirtualEnvironmentPath(String virtualEnvFullPath) {
+		return StringUtils.replace(virtualEnvFullPath, " (Activated)", StringUtils.EMPTY);
+
+	}
 }

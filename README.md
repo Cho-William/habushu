@@ -162,6 +162,43 @@ For example, developers may use this feature to bind a Habushu module's `compile
 	</plugin>
 ```
 
+### Leveraging the containerize-dependencies Goal to Prepare a Containerized Virtual Environment ###
+If the execution is specified (does not run by default), the `containerize-dependencies` goal will collect a single `habushu` dependency specified the project's `pom.xml`, including all transitive habushu-packaged dependencies. After collecting the set of necessary dependencies, Habushu will copy the project files to the build directory under `venv-support`, while preserving the original structure of the dependency modules to ensure that any path-based dependencies can be leveraged as-is. This directory can then be copied onto a Docker container and used to create a virtual environment capable of running the target Habushu project.
+
+```xml
+	<plugin>
+		<groupId>org.technologybrewery.habushu</groupId>
+		<artifactId>habushu-maven-plugin</artifactId>
+		<configuration>
+		...
+		</configuration>
+		<executions>
+			<execution>
+				<id>containerize-deps</id>
+				<phase>validate</phase>
+				<goals>
+					<goal>containerize-dependencies</goal>
+				</goals>
+			</execution>
+		</executions>
+	</plugin>
+```
+
+The plugin will only examine dependencies that are of the type `habushu` in the dependencies block of the `pom.xml` file. 
+
+```xml
+    <dependencies>
+        <dependency>
+            <groupId>your-group-id</groupId>
+            <artifactId>your-artifact-id</artifactId>
+            <version>your-version</version>
+            <type>habushu</type>
+        </dependency>
+    </dependencies>
+```
+
+Any transitive monorepo dependencie shoud also use this convention to ensure they are captured by the plugin.
+
 ### Leveraging Maven Build Cache for Faster Builds ###
 
 Habushu enables support for faster builds via
@@ -682,13 +719,15 @@ Folder in which Python test files are located - should align with Poetry's proje
 
 Default: `${project.basedir}/tests`
 
-#### cacheWheels ####
+#### cacheWheels (deprecated) ####
+The `cache-wheels` goal has been `deprecated`, please see the `containerize-dependencies` goal instead.
 
 Enables or Disables the copying of wheels into Poetry cache.
 
 Default: `false`
 
-#### wheelDependencies ####
+#### wheelDependencies (deprecated) ####
+The `retrieve-wheels` goal has been `deprecated`, please see the `containerize-dependencies` goal instead.
 
 Optional set of wheel dependencies to retrieve from poetry cache. This allows previously cached external 
 wheel dependencies to be copied into a given target directory if it exists in poetry cache. This logic 
@@ -771,6 +810,11 @@ normal circumstances.
 
 Default: `${project.basedir}/target/habushu.placeholder.txt`
 
+#### workingDirectory ####
+
+Controls where the clean plugin will determine where Poetry projects are located - should always be the basedir of the encapsulating Maven project.
+
+Default: `${project.basedir}`
 
 #### distDirectory ####
 
@@ -847,6 +891,42 @@ Controls whether the build will continue if lint identifies code that violate ch
 
 Default: `true`
 
+#### workingDirectoryRelativeToBasedir ####
+
+Controls the working directory relative to the `${project.basedir}` when examining monorepo dependency modules for copying source files with the `containerize-dependencies` goal. The working directory should be the `${project.basedir}`, hence the `null` default.
+
+Note: this parameter should be consistent with the `workingDirectory` configuration, such that both parameters point to the same expected working directory. For example, if the `workingDirectory` was overriden to `${project.basedir}/custom-workdir`, then `workingDirectoryRelativeToBasedir` should be set to `/custom-workdir`. Setting this parameter should only be necessary if a non-default `workingDirectory` configuration was set.
+
+Default: `null`
+
+#### distDirectoryRelativeToBasedir ####
+
+Controls the expected dist directory relative to the `${project.basedir}` when examining monorepo dependency modules for copying source files with the `containerize-dependencies` goal.
+
+Note: this parameter should be consistent with the `distDirectory` configuration. For example, if the `distDirectory` was set to `${project.basedir}/custom-dist`, then `distDirectoryRelativeToBasedir` should be set to `/custom-dist`. Setting this parameter should only be necessary if a non-default `distDirectory` configuration was set.
+
+Default: `/dist`
+
+#### targetDirectoryRelativeToBasedir ####
+
+Controls the expected target directory relative to the `${project.build.directory}` when examining monorepo dependency modules for copying source files with the `containerize-dependencies` goal.
+
+Note: this parameter should be consistent with the `targetDirectory` configuration. For example, if the `targetDirectory` was overriden to `${project.basedir}/custom-target`, then `targetDirectoryRelativeToBasedir` should be set to `/custom-target`. Setting this parameter should only be necessary if a non-default `targetDirectory` configuration was set.
+
+Default: `/target`
+
+#### anchorSourceDirectory ####
+
+Controls the directory of where containerization files will be copied from with the `containerize-dependencies` goal. If set, this value should be a directory path that houses all the necessary monorepo dependency Habushu modules (including transitive monorepo dependency modules). Additionally, if set, this path should either be an absolute path or a path relative to the `${project.basedir}` of the `containerize-dependencies` goal's execution. Typically, it is not recommended to set this parameter, as the default directory will be sufficient for monorepo use-cases.
+
+Default: the build's execution root directory
+
+#### containerizeSupportDirectory ####
+
+Controls the location of where containerization files will be copied to as part of the `containerize-dependencies` goal.
+
+Default: `${project.build.directory}/containerize-support`
+
 ## The Habushu Build Lifecycle ##
 
 Habushu applies a [custom Maven lifecycle that binds Poetry-based DevSecOps workflow commands](https://fermenter.atlassian.net/wiki/spaces/HAB/pages/2056749057/Dependency+Management+and+Build+Automation+through+Poetry+and+Maven) to the following phases:
@@ -873,11 +953,10 @@ Uses [behave](https://github.com/behave/behave) to execute BDD scenarios that ar
 
 ##### package #####
 
-Builds the `sdist` and `wheel` archives of this project using `poetry build`. It also generates a `requirements.txt` file which is useful when installing the package in a Docker container where you may want to install the dependencies in a specific Docker layer to optimize caching.
+Builds the `sdist` and `wheel` archives of this project using `poetry build`. It also generates a `requirements.txt` file which is useful when installing the package in a Docker container where you may want to install the dependencies in a specific Docker layer to optimize caching. If the `containerize-dependencies` execution is enabled, supporting monorepo dependency source files will be staged.
 
 ##### install #####
-Publishes the `pom.xml` for the module into your local Maven Repository (`~/.m2/repository`). If the **cacheWheels** configuration is set to True, the `wheel` archive will be copied to the poetry cache directory (`~/{poetry-cache-dir}/cache/repositories/wheels/{artifact-id}/`). The **cacheWheels** configuration default behavior is not to cache the `wheel` archive. If the **wheelDependencies** list is set, each specified wheel dependency will be 
-retrieve and placed into the given target directory.
+Publishes the `pom.xml` for the module into your local Maven Repository (`~/.m2/repository`).
 
 ##### deploy #####
 

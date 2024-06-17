@@ -20,7 +20,9 @@ import org.technologybrewery.habushu.util.HabushuUtil;
  *                          wheel files in poetry.
  * 
  * @throws HabushuException
+ * @deprecated This mojo is deprecated, use the containerize-dependencies goal instead
  */
+@Deprecated
 @Mojo(name = "cache-wheels", defaultPhase = LifecyclePhase.INSTALL)
 public class CacheWheelsMojo extends AbstractHabushuMojo {
     /**
@@ -31,6 +33,8 @@ public class CacheWheelsMojo extends AbstractHabushuMojo {
 
     @Override
     public void doExecute() throws MojoExecutionException, MojoFailureException {
+        getLog().warn("The cache-wheels goal has been deperecated," +
+                "please see the containerize-dependencies goal instead." );
         if (cacheWheels) {
             cacheWheels();
         }
