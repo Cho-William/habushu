@@ -4,9 +4,7 @@ Feature: Test staging source files of specified dependencies and transitive path
   Scenario: One Habushu-type dependency is specified with the default configuration
     Given a single Habushu-type dependency
     When the stage-dependencies goal is executed
-    Then the dependency source files are staged in the build directory
-    And all transitive Habushu-type dependency source files are staged in the build directory
-    And the relative directory structure is preserved
+    Then the sources files of the dependency and transitive Habushu-type dependencies are staged and structured
 
   Scenario: No Habushu-type dependencies are specified with the default configuration
     Given no Habushu-type dependencies

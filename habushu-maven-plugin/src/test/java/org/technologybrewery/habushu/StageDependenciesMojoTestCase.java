@@ -14,7 +14,6 @@ import org.eclipse.aether.internal.impl.SimpleLocalRepositoryManagerFactory;
 import org.eclipse.aether.repository.LocalRepository;
 
 import java.io.File;
-import java.util.Arrays;
 
 /**
  * Wraps the default behavior provided by the Maven plugin testing harness through {@link AbstractMojoTestCase} to
@@ -23,7 +22,7 @@ import java.util.Arrays;
  * This class is largely adapted from the testing approach developed by the license-audit-maven-plugin's
  * {@code BetterAbstractMojoTestCase} (https://github.com/ahgittin/license-audit-maven-plugin)
  */
-public class HabushuMojoTestCase extends AbstractMojoTestCase {
+public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
 
     public void configurePluginTestHarness() throws Exception {
         super.setUp();
@@ -41,6 +40,7 @@ public class HabushuMojoTestCase extends AbstractMojoTestCase {
     public MavenSession newDefaultMavenSession() {
         try {
             MavenExecutionRequest request = new DefaultMavenExecutionRequest();
+
             MavenExecutionResult result = new DefaultMavenExecutionResult();
 
             // Populates sensible defaults, including repository basedir and remote repos
@@ -72,19 +72,6 @@ public class HabushuMojoTestCase extends AbstractMojoTestCase {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    /**
-     * Overrides super's {@link #newMavenSession(MavenProject)} to delegate to
-     * the new {@link #newDefaultMavenSession()} introduced in {@link HabushuMojoTestCase},
-     * which sets the defaults that are normally expected by Maven.
-     */
-    @Override
-    protected MavenSession newMavenSession(MavenProject project) {
-        MavenSession session = newDefaultMavenSession();
-        session.setCurrentProject(project);
-        session.setProjects(Arrays.asList(project));
-        return session;
     }
 
     /**
