@@ -1,0 +1,37 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <name>Foundation::Python Dependency Y</name>
+    <artifactId>foundation-python-dep-Y</artifactId>
+    <version>1.0.0</version>
+
+    <packaging>habushu</packaging>
+
+    <parent>
+        <groupId>org.test.monorepo</groupId>
+        <artifactId>foundation</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.technologybrewery.habushu</groupId>
+                <artifactId>habushu-maven-plugin</artifactId>
+                <version>${project.version}</version>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.test.monorepo</groupId>
+            <artifactId>foundation-python-dep-Z</artifactId>
+            <version>${project.version}</version>
+            <type>habushu</type>
+        </dependency>
+    </dependencies>
+
+</project>
