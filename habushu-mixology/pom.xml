@@ -21,6 +21,13 @@
             <version>${version.cucumber.reporting.plugin}</version>
             <scope>test</scope>
         </dependency>
+        <!-- NB: workaround to trigger build cache invalidation when a new SNAPSHOT is available-->
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>habushu-maven-plugin</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>

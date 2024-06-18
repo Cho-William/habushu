@@ -6,7 +6,6 @@ import com.electronwill.nightconfig.core.file.FileConfig;
 import com.vdurmont.semver4j.Semver;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.client.utils.URIBuilder;
@@ -51,7 +50,6 @@ import java.util.concurrent.TimeUnit;
 public class InstallDependenciesMojo extends AbstractHabushuMojo {
 
     private static final String EQUALS = "=";
-    private static final String DOUBLE_QUOTE = "\"";
 
     /**
      * Configures whether a private PyPi repository, if specified via
