@@ -210,7 +210,7 @@
                         </configurationParameters>
                     </properties>
                     <excludes>
-                        <exclude>**/HabushuMojoTestCase.java</exclude>
+                        <exclude>**/StageDependenciesMojoTestCase.java</exclude>
                     </excludes>
                 </configuration>
             </plugin>

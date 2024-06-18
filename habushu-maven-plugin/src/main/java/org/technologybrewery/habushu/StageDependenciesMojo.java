@@ -12,9 +12,10 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.project.DuplicateProjectException;
-import org.apache.maven.project.MavenProject;
+import org.apache.maven.project.*;
+import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
 import org.codehaus.plexus.util.dag.CycleDetectedException;
+import org.eclipse.aether.graph.DependencyNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,8 +50,13 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
         return this.session;
     }
 
+    protected void setSession(MavenSession session) {
+        this.session = session;
+    }
+
     @Override
     protected void doExecute() throws MojoExecutionException, MojoFailureException {
+        logger.info("Actual Mojo Session:", getSession());
         mockSuceess();
         // String actualPath = mojo.getSession().getCurrentProject().getBuild().getDirectory() + "/venv-support";
         // String expectedPath = getRootParent(mojo.getSession().getCurrentProject()).getBasedir().toString();
@@ -73,7 +79,14 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
         return habushuDependencies;
     }
 
-    private Set<Dependency> getTransitives(Dependency dependency, Set<Dependency> habushuDependencies) throws CycleDetectedException, DuplicateProjectException {
+    private Set<Dependency> getTransitives(Dependency dependency, Set<Dependency> habushuDependencies) throws DependencyResolutionException, ComponentLookupException {
+        ProjectDependenciesResolver resolver = getSession().getContainer().lookup(ProjectDependenciesResolver.class);
+        DefaultDependencyResolutionRequest request = new DefaultDependencyResolutionRequest(
+                getSession().getCurrentProject(), getSession().getRepositorySession());
+        DependencyResolutionResult result = resolver.resolve(request);
+        DependencyNode rootNode = result.getDependencyGraph();
+
+
         try {
             List<MavenProject> projects = new ArrayList<>();
             projects.add(getSession().getCurrentProject());

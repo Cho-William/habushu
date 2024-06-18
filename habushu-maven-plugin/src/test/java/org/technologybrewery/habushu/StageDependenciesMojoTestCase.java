@@ -3,17 +3,22 @@ package org.technologybrewery.habushu;
 import org.apache.maven.DefaultMaven;
 import org.apache.maven.Maven;
 import org.apache.maven.execution.*;
+import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.Mojo;
 import org.apache.maven.plugin.testing.AbstractMojoTestCase;
-import org.apache.maven.project.MavenProject;
-import org.apache.maven.project.ProjectBuilder;
-import org.apache.maven.project.ProjectBuildingRequest;
+import org.apache.maven.project.*;
 import org.apache.maven.session.scope.internal.SessionScope;
 import org.eclipse.aether.DefaultRepositorySystemSession;
+import org.eclipse.aether.graph.DependencyNode;
 import org.eclipse.aether.internal.impl.SimpleLocalRepositoryManagerFactory;
 import org.eclipse.aether.repository.LocalRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import static org.apache.maven.execution.MavenExecutionRequest.REACTOR_MAKE_UPSTREAM;
 
 import java.io.File;
+import java.util.Arrays;
 
 /**
  * Wraps the default behavior provided by the Maven plugin testing harness through {@link AbstractMojoTestCase} to
@@ -23,6 +28,8 @@ import java.io.File;
  * {@code BetterAbstractMojoTestCase} (https://github.com/ahgittin/license-audit-maven-plugin)
  */
 public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
+
+    private static final Logger logger = LoggerFactory.getLogger(StageDependenciesMojoTestCase.class);
 
     public void configurePluginTestHarness() throws Exception {
         super.setUp();
@@ -40,7 +47,6 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
     public MavenSession newDefaultMavenSession() {
         try {
             MavenExecutionRequest request = new DefaultMavenExecutionRequest();
-
             MavenExecutionResult result = new DefaultMavenExecutionResult();
 
             // Populates sensible defaults, including repository basedir and remote repos
@@ -49,6 +55,8 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
 
             // Enables the usage of Java system properties for interpolation and profile activation
             request.setSystemProperties(System.getProperties());
+
+            request.setMakeBehavior(MavenExecutionRequest.REACTOR_MAKE_UPSTREAM);
 
             // Ensures that the repo session in the maven session has a repo manager and points to the local repo
             DefaultMaven maven = (DefaultMaven) getContainer().lookup(Maven.class);
@@ -68,10 +76,24 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
             sessionScope.enter();
             sessionScope.seed(MavenSession.class, session);
 
+            logger.info("TestCase Session with Make Behavior set:", session);
             return session;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Overrides super's {@link #newMavenSession(MavenProject)} to delegate to
+     * the new {@link #newDefaultMavenSession()} introduced in {@link StageDependenciesMojoTestCase},
+     * which sets the defaults that are normally expected by Maven.
+     */
+    @Override
+    protected MavenSession newMavenSession(MavenProject project) {
+        MavenSession session = newDefaultMavenSession();
+        session.setCurrentProject(project);
+        session.setProjects(Arrays.asList(project));
+        return session;
     }
 
     /**
@@ -90,9 +112,18 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
         assertTrue(pom.exists());
 
         // how can I add -am to this building request or do I just do the root project pom for testing?
-        ProjectBuildingRequest buildingRequest = newDefaultMavenSession().getProjectBuildingRequest();
+        MavenSession session = newDefaultMavenSession();
+        ProjectBuildingRequest buildingRequest = session.getProjectBuildingRequest();
+        buildingRequest.setResolveDependencies(true);
         ProjectBuilder projectBuilder = lookup(ProjectBuilder.class);
+
         MavenProject project = projectBuilder.build(pom, buildingRequest).getProject();
+//        StageDependenciesMojo mojo = (StageDependenciesMojo) lookupConfiguredMojo(project, goal);
+//        mojo.getSession().getRequest().setMakeBehavior(MavenExecutionRequest.REACTOR_MAKE_UPSTREAM);
+        ProjectDependenciesResolver resolver = lookup(ProjectDependenciesResolver.class);
+        DependencyResolutionResult result = resolver.resolve(
+                new DefaultDependencyResolutionRequest(project, buildingRequest.getRepositorySession()));
+        DependencyNode rootNode = result.getDependencyGraph();
 
         return lookupConfiguredMojo(project, goal);
     }
