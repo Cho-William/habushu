@@ -36,7 +36,7 @@ public class PyenvCommandHelper {
     public boolean isPyenvInstalled() {
         try {
             String foundVersion = executeWithDebugLogging(Arrays.asList("--version"));
-            logger.debug("Found " + foundVersion);
+            logger.debug("Found {}", foundVersion);
         } catch (Throwable e) {
             return false;
         }
