@@ -4,15 +4,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <name>Java Dependency X</name>
+    <groupId>org.test.monorepo</groupId>
     <artifactId>java-dep-X</artifactId>
     <version>1.0.0</version>
 
     <packaging>jar</packaging>
-
-    <parent>
-        <groupId>org.test.monorepo</groupId>
-        <artifactId>test-monorepo</artifactId>
-        <version>1.0.0</version>
-    </parent>
 
 </project>

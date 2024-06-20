@@ -4,17 +4,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <name>No Monorepo Dependency Application</name>
+    <groupId>org.test.monorepo</groupId>
     <artifactId>no-monorepo-dep-application</artifactId>
     <version>1.0.0</version>
 
     <packaging>pom</packaging>
-
-    <parent>
-        <groupId>org.test.monorepo</groupId>
-        <artifactId>test-monorepo</artifactId>
-        <version>1.0.0</version>
-    </parent>
-
+    
     <build>
         <plugins>
             <plugin>
