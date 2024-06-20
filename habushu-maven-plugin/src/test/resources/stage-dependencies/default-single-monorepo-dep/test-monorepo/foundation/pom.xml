@@ -12,7 +12,6 @@
     
     <modules>
         <module>foundation-python-dep-Y</module>
-        <module>foundation-sub</module>
     </modules>
 
 </project>

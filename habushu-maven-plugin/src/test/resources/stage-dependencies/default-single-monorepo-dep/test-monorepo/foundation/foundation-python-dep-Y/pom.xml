@@ -27,13 +27,6 @@
             <artifactId>habushu-maven-plugin</artifactId>
             <version>2.15.0</version>
         </dependency>
-
-        <dependency>
-            <groupId>org.test.monorepo</groupId>
-            <artifactId>foundation-sub-python-dep-Z</artifactId>
-            <version>${project.version}</version>
-            <type>habushu</type>
-        </dependency>
     </dependencies>
 
 

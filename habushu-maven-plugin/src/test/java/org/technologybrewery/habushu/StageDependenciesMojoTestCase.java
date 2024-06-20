@@ -22,6 +22,7 @@ import java.io.File;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Wraps the default behavior provided by the Maven plugin testing harness through {@link AbstractMojoTestCase} to
@@ -33,6 +34,8 @@ import java.util.Arrays;
 public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
 
     private static final Logger logger = LoggerFactory.getLogger(StageDependenciesMojoTestCase.class);
+
+    private List<File> mavenProjectFiles = new ArrayList<>();
 
     public void configurePluginTestHarness() throws Exception {
         super.setUp();
@@ -94,24 +97,30 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
     @Override
     protected MavenSession newMavenSession(MavenProject project) {
         MavenSession session = newDefaultMavenSession();
+        ArrayList<MavenProject> mavenProjects = new ArrayList<>();
 
-        MavenProject depXProject;
-        MavenProject depYProject;
-        MavenProject depZProject;
         try {
             ProjectBuilder projectBuilder = lookup(ProjectBuilder.class);
-            File depX = new File("src/test/resources/stage-dependencies/default-single-monorepo-dep/test-monorepo/extensions/extensions-python-dep-X/pom.xml");
-            File depY = new File("src/test/resources/stage-dependencies/default-single-monorepo-dep/test-monorepo/foundation/foundation-python-dep-Y/pom.xml");
-            File depZ = new File("src/test/resources/stage-dependencies/default-single-monorepo-dep/test-monorepo/foundation/foundation-sub/foundation-sub-python-dep-Z/pom.xml");
-            depXProject = projectBuilder.build(depX, session.getProjectBuildingRequest()).getProject();
-            depYProject = projectBuilder.build(depY, session.getProjectBuildingRequest()).getProject();
-            depZProject = projectBuilder.build(depZ, session.getProjectBuildingRequest()).getProject();
+
+            for(File mavenProjectFile: this.mavenProjectFiles) {
+                mavenProjects.add(projectBuilder.build(mavenProjectFile, session.getProjectBuildingRequest()).getProject());
+            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        session.setProjects(Arrays.asList(project, depXProject, depYProject, depZProject));
+
+        session.setProjects(mavenProjects);
         session.setCurrentProject(project);
+
         return session;
+    }
+
+    public void addMavenProjectFile(File mavenProjectFile) {
+        this.mavenProjectFiles.add(mavenProjectFile);
+    }
+
+    public void clearMavenProjectFiles() {
+        this.mavenProjectFiles = new ArrayList<>();
     }
 
     /**
@@ -149,5 +158,7 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
         //mojo.setProjectBuilder(projectBuilder);
         return mojo;
     }
+
+
 
 }

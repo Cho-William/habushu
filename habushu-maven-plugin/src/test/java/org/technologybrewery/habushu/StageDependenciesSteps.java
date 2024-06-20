@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Assertions;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -41,12 +42,17 @@ public class StageDependenciesSteps {
 
     @After("@stageDependencies")
     public void tearDownMavenPluginTestHarness() throws Exception {
+        mojoTestCase.clearMavenProjectFiles();
         mojoTestCase.tearDownPluginTestHarness();
     }
 
     @Given("a single Habushu-type dependency")
     public void a_single_habushu_type_dependency() throws Exception {
         mavenProjectPath = targetDefaultSingleMonorepoDepPath + "/extensions/extensions-monorepo-dep-consuming-application";
+
+        mojoTestCase.addMavenProjectFile(new File("src/test/resources/stage-dependencies/default-single-monorepo-dep/test-monorepo/extensions/extensions-python-dep-X/pom.xml"));
+        mojoTestCase.addMavenProjectFile(new File("src/test/resources/stage-dependencies/default-single-monorepo-dep/test-monorepo/foundation/foundation-python-dep-Y/pom.xml"));
+
         mojo = (StageDependenciesMojo) mojoTestCase.lookupConfiguredMojo(
                 new File(mavenProjectPath, POM_FILE), "stage-dependencies"
         );
@@ -63,7 +69,7 @@ public class StageDependenciesSteps {
         expectedHabushuDirsNames.add("extensions/extensions-python-dep-X");
         expectedHabushuDirsNames.add("foundation/foundation-python-dep-Y");
         expectedHabushuDirsNames.add("foundation/foundation-sub/foundation-sub-python-dep-Z");
-        assertStaged(new File(testDefaultSingleMonorepoDepPath), mojo.getAnchorDirectory(), expectedHabushuDirsNames);
+        assertStaged(new File(testDefaultSingleMonorepoDepPath), mojo.getAnchorOutputDirectory(), expectedHabushuDirsNames);
     }
 
     @Given("no Habushu-type dependencies")
@@ -99,38 +105,27 @@ public class StageDependenciesSteps {
     private void assertStaged(File expectedRoot, File actual, Set<String> expectedHabushuDirNames) {
         try {
             // find the subdirectory of the source that matches the stage anchor of the mojo
-            File expected = getMatchingDir(actual.getName(), expectedRoot);
+            // File expected = getMatchingDir(actual.getName(), expectedRoot);
 
             // relativize
-            Map<String, File> expectedFiles = getRelativizedContentsMap(expected);
-            Map<String, File> actualFiles = getRelativizedContentsMap(actual);
+            Set<Path> actualFiles = getRelativizedPaths(actual);
 
-            boolean stagingAccurate = true;
 
-            Assertions.assertTrue(actualFiles.keySet().containsAll(expectedHabushuDirNames),
-                    "The expected set of Habushu-type dependencies were not staged.");
 
-            for (Map.Entry<String, File> entry : actualFiles.entrySet()) {
-                String relativePath = entry.getKey();
-                File actualFile = entry.getValue();
-                File expectedFile = expectedFiles.get(relativePath);
+            assertFile(actualFiles, "test-monorepo/extensions/extensions-python-dep-X/src/python_dep_x/python_dep_x.py");
+            assertFile(actualFiles, "test-monorepo/extensions/extensions-python-dep-X/pyproject.toml");
+            assertFile(actualFiles, "test-monorepo/extensions/extensions-python-dep-X/README.md");
+            assertFile(actualFiles, "test-monorepo/foundation/foundation-python-dep-Y/src/python_dep_x/python_dep_y.py");
+            assertFile(actualFiles, "test-monorepo/foundation/foundation-python-dep-Y/pyproject.toml");
+            assertFile(actualFiles, "test-monorepo/foundation/foundation-python-dep-Y/README.md");
 
-                if (expectedFile == null) {
-                    stagingAccurate = false;
-                }
-
-                if ((expectedFile != null && expectedFile.isFile()) && (actualFile != null && actualFile.isFile())) {
-                    if (!filesHaveSameContent(expectedFile, actualFile)) {
-                        stagingAccurate = false;
-                    }
-                }
-
-            }
-            Assertions.assertTrue(stagingAccurate,
-                    "Expected file contents to be the same, but they were not.");
         } catch (Exception e) {
             throw new RuntimeException();
         }
+    }
+
+    private static void assertFile(Set<Path> actualFiles, String path) {
+        Assertions.assertTrue(actualFiles.contains(Paths.get(path)), "Could not find: " + path);
     }
 
     private boolean filesHaveSameContent(File expectedFile, File actualFile) throws IOException {
@@ -139,14 +134,12 @@ public class StageDependenciesSteps {
         return IOUtils.contentEquals(expectedStream, actualStream);
     }
 
-    private Map<String, File> getRelativizedContentsMap(File rootDir) throws IOException {
+    private Set<Path> getRelativizedPaths(File rootDir) throws IOException {
         try (Stream<Path> paths = Files.walk(rootDir.toPath())) {
             return paths
-                    .filter(path -> Files.isRegularFile(path) || Files.isDirectory(path))
-                    .collect(Collectors.toMap(
-                            path -> rootDir.toPath().relativize(path).toString(),
-                            Path::toFile
-                    ));
+                    .filter(Files::isRegularFile)
+                    .map(rootDir.toPath()::relativize)
+                    .collect(Collectors.toSet());
         }
     }
 

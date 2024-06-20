@@ -1,15 +1,15 @@
 package org.technologybrewery.habushu;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.maven.Maven;
+import org.apache.commons.io.filefilter.FileFileFilter;
+import org.apache.commons.io.filefilter.FileFilterUtils;
+import org.apache.commons.io.filefilter.IOFileFilter;
 import org.apache.maven.execution.MavenSession;
-import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +38,8 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
     @Component
     protected MavenSession session;
 
-    protected File anchorDirectory;
+    protected File anchorSourceDirectory;
+    protected File anchorOutputDirectory;
 
     protected final String HABUSHU = "habushu";
 
@@ -53,10 +54,53 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
     @Override
     protected void doExecute() throws MojoExecutionException, MojoFailureException {
         Set<MavenProject> habushuProjects = getHabushuProjects();
-        this.anchorDirectory = calculateAnchorDirectory(habushuProjects);
-        // copy relevant(anchorDirectory, habushuProjects)
+        this.anchorSourceDirectory = calculateAnchorDirectory(habushuProjects);
+        try {
+            copyRelevant(anchorSourceDirectory, habushuProjects);
+        } catch (Exception e) {
+            throw new MojoExecutionException("");
+        }
         String s = "";
         s += "asdf";
+    }
+
+    private void copyRelevant(File anchorDirectory, Set<MavenProject> habushuProjects) throws IOException {
+        File destDir = new File(getSession().getCurrentProject().getBuild().getDirectory() + "/venv-support");
+        setAnchorOutputDirectory(destDir);
+
+        Set<IOFileFilter> habushuDirsFilters = new HashSet<>();
+        for (MavenProject project : habushuProjects) {
+            habushuDirsFilters.add(FileFilterUtils.nameFileFilter(project.getFile().getParentFile().getName()));
+        }
+
+
+
+
+        // Define what to include
+        IOFileFilter whiteListFilter = FileFilterUtils.or(
+                FileFilterUtils.nameFileFilter("poetry.lock"),
+                FileFilterUtils.nameFileFilter("pyproject.toml"),
+                FileFilterUtils.nameFileFilter("README.md")
+        );
+
+        IOFileFilter whiteListDirFilter = FileFilterUtils.or(
+                habushuDirsFilters.toArray(new IOFileFilter[0])
+        );
+
+
+        // Get the files to be copied
+        Collection<File> filesToCopy = FileUtils.listFilesAndDirs(anchorDirectory, FileFilterUtils.trueFileFilter(), whiteListDirFilter);
+
+        // Copy the filtered files and directories
+        for (File file : filesToCopy) {
+            File destFile = new File(destDir, anchorDirectory.toURI().relativize(file.toURI()).getPath());
+            if (file.isDirectory()) {
+                FileUtils.forceMkdir(destFile);
+            } else {
+                FileUtils.copyFile(file, destFile);
+            }
+        }
+
     }
 
     protected File calculateAnchorDirectory(Set<MavenProject> habushuProjects) {
@@ -85,7 +129,7 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
                 + "/default-single-monorepo-dep/test-monorepo/extensions/extensions-monorepo-dep-consuming-application"
                 + "/target/venv-support/test-monorepo"
         );
-        setAnchorDirectory(destination);
+        setAnchorSourceDirectory(destination);
         try {
             FileUtils.copyDirectory(source, destination);
         } catch (IOException e) {
@@ -101,11 +145,19 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
         doExecute();
     }
 
-    public File getAnchorDirectory() {
-        return anchorDirectory;
+    public File getAnchorSourceDirectory() {
+        return anchorSourceDirectory;
     }
 
-    protected void setAnchorDirectory(File anchorDirectory) {
-        this.anchorDirectory = anchorDirectory;
+    protected void setAnchorSourceDirectory(File anchorSourceDirectory) {
+        this.anchorSourceDirectory = anchorSourceDirectory;
+    }
+
+    public File getAnchorOutputDirectory() {
+        return anchorOutputDirectory;
+    }
+
+    protected void setAnchorOutputDirectory(File anchorOutputDirectory) {
+        this.anchorOutputDirectory = anchorOutputDirectory;
     }
 }
