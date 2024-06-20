@@ -94,16 +94,23 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
     @Override
     protected MavenSession newMavenSession(MavenProject project) {
         MavenSession session = newDefaultMavenSession();
-        session.setCurrentProject(project);
+
         MavenProject depXProject;
+        MavenProject depYProject;
+        MavenProject depZProject;
         try {
             ProjectBuilder projectBuilder = lookup(ProjectBuilder.class);
             File depX = new File("src/test/resources/stage-dependencies/default-single-monorepo-dep/test-monorepo/extensions/extensions-python-dep-X/pom.xml");
+            File depY = new File("src/test/resources/stage-dependencies/default-single-monorepo-dep/test-monorepo/foundation/foundation-python-dep-Y/pom.xml");
+            File depZ = new File("src/test/resources/stage-dependencies/default-single-monorepo-dep/test-monorepo/foundation/foundation-sub/foundation-sub-python-dep-Z/pom.xml");
             depXProject = projectBuilder.build(depX, session.getProjectBuildingRequest()).getProject();
+            depYProject = projectBuilder.build(depY, session.getProjectBuildingRequest()).getProject();
+            depZProject = projectBuilder.build(depZ, session.getProjectBuildingRequest()).getProject();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        session.setProjects(Arrays.asList(project, depXProject));
+        session.setProjects(Arrays.asList(project, depXProject, depYProject, depZProject));
+        session.setCurrentProject(project);
         return session;
     }
 
@@ -139,7 +146,7 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
 
 
         StageDependenciesMojo mojo = lookupConfiguredMojo(project, goal);
-        mojo.setProjectBuilder(projectBuilder);
+        //mojo.setProjectBuilder(projectBuilder);
         return mojo;
     }
 

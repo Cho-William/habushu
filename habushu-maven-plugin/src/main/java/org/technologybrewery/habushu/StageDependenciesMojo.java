@@ -3,26 +3,22 @@ package org.technologybrewery.habushu;
 import org.apache.commons.io.FileUtils;
 import org.apache.maven.Maven;
 import org.apache.maven.execution.MavenSession;
-import org.apache.maven.graph.DefaultProjectDependencyGraph;
 import org.apache.maven.model.Dependency;
-import org.apache.maven.model.Model;
-import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.*;
-import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
-import org.codehaus.plexus.util.dag.CycleDetectedException;
-import org.eclipse.aether.graph.DependencyNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
+
+import static org.apache.commons.lang3.StringUtils.getCommonPrefix;
 
 /**
  * Helper mojo that stages the source files of a monorepo dependency
@@ -39,11 +35,8 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
 
     private static final Logger logger = LoggerFactory.getLogger(StageDependenciesMojo.class);
 
-    @Parameter(property = "session", required = true, readonly = true)
+    @Component
     protected MavenSession session;
-
-    @Parameter(property = "projectBuilder", required = true, readonly = true)
-    ProjectBuilder projectBuilder;
 
     protected File anchorDirectory;
 
@@ -57,58 +50,31 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
         this.session = session;
     }
 
-    protected ProjectBuilder getProjectBuilder() {
-        return this.projectBuilder;
-    }
-
-    protected void setProjectBuilder(ProjectBuilder projectBuilder) {
-        this.projectBuilder = projectBuilder;
-    }
-
     @Override
     protected void doExecute() throws MojoExecutionException, MojoFailureException {
-        logger.info("Actual Mojo Session:", getSession());
-
-        mockSuceess();
-        // String actualPath = mojo.getSession().getCurrentProject().getBuild().getDirectory() + "/venv-support";
-        // String expectedPath = getRootParent(mojo.getSession().getCurrentProject()).getBasedir().toString();
-        Set<Dependency> allHabushuTypeDependencies = getHabushuTypeDependenciesWithTransitives();
+        Set<MavenProject> habushuProjects = getHabushuProjects();
+        this.anchorDirectory = calculateAnchorDirectory(habushuProjects);
+        // copy relevant(anchorDirectory, habushuProjects)
+        String s = "";
+        s += "asdf";
     }
 
-    protected Set<Dependency> getHabushuTypeDependenciesWithTransitives() {
-        MavenProject parentProject;
-        try {
-            parentProject = projectBuilder.build(getSession().getCurrentProject().getParentFile(), getSession().getProjectBuildingRequest()).getProject();
-            String s;
-        } catch (ProjectBuildingException e) {
-            throw new RuntimeException(e);
+    protected File calculateAnchorDirectory(Set<MavenProject> habushuProjects) {
+        ArrayList<String> habushuDirectories = new ArrayList<>();
+        for (MavenProject project : habushuProjects) {
+            habushuDirectories.add(project.getFile().toString());
         }
+        return new File(getCommonPrefix(habushuDirectories.toArray(new String[0])));
+    }
 
-        Set<Dependency> habushuDependencies = new HashSet<>();
-        for (Dependency dependency : getSession().getCurrentProject().getModel().getDependencies()) {
-            if (Objects.equals(dependency.getType(), HABUSHU)) {
-                habushuDependencies.add(dependency);
-                try {
-                    habushuDependencies = getTransitives(dependency, habushuDependencies);
-                } catch (Exception e) {
-                    throw new RuntimeException();
-                }
-
+    protected Set<MavenProject> getHabushuProjects() {
+        Set<MavenProject> habushuProjects = new HashSet<>();
+        for (MavenProject project : getSession().getProjects()) {
+            if (Objects.equals(project.getModel().getPackaging(), HABUSHU)) {
+                habushuProjects.add(project);
             }
         }
-        return habushuDependencies;
-    }
-
-    private Set<Dependency> getTransitives(Dependency dependency, Set<Dependency> habushuDependencies) throws DependencyResolutionException, ComponentLookupException {
-        ProjectDependenciesResolver resolver = getSession().getContainer().lookup(ProjectDependenciesResolver.class);
-        DefaultDependencyResolutionRequest request = new DefaultDependencyResolutionRequest(
-                getSession().getCurrentProject(), getSession().getRepositorySession());
-        DependencyResolutionResult result = resolver.resolve(request);
-        DependencyNode rootNode = result.getDependencyGraph();
-
-        // MavenProject project = new MavenProject(depModel);
-        // if (new MavenProject()dependency.getSystemPath())
-        return new HashSet<>();
+        return habushuProjects;
     }
 
     private void mockSuceess() {
