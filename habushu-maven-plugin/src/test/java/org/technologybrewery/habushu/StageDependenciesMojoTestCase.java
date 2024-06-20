@@ -8,6 +8,7 @@ import org.apache.maven.plugin.Mojo;
 import org.apache.maven.plugin.testing.AbstractMojoTestCase;
 import org.apache.maven.project.*;
 import org.apache.maven.session.scope.internal.SessionScope;
+import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.graph.DependencyNode;
 import org.eclipse.aether.internal.impl.SimpleLocalRepositoryManagerFactory;
@@ -18,6 +19,8 @@ import org.slf4j.LoggerFactory;
 import static org.apache.maven.execution.MavenExecutionRequest.REACTOR_MAKE_UPSTREAM;
 
 import java.io.File;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -92,7 +95,15 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
     protected MavenSession newMavenSession(MavenProject project) {
         MavenSession session = newDefaultMavenSession();
         session.setCurrentProject(project);
-        session.setProjects(Arrays.asList(project));
+        MavenProject depXProject;
+        try {
+            ProjectBuilder projectBuilder = lookup(ProjectBuilder.class);
+            File depX = new File("src/test/resources/stage-dependencies/default-single-monorepo-dep/test-monorepo/extensions/extensions-python-dep-X/pom.xml");
+            depXProject = projectBuilder.build(depX, session.getProjectBuildingRequest()).getProject();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        session.setProjects(Arrays.asList(project, depXProject));
         return session;
     }
 
@@ -120,12 +131,16 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
         MavenProject project = projectBuilder.build(pom, buildingRequest).getProject();
 //        StageDependenciesMojo mojo = (StageDependenciesMojo) lookupConfiguredMojo(project, goal);
 //        mojo.getSession().getRequest().setMakeBehavior(MavenExecutionRequest.REACTOR_MAKE_UPSTREAM);
-        ProjectDependenciesResolver resolver = lookup(ProjectDependenciesResolver.class);
-        DependencyResolutionResult result = resolver.resolve(
-                new DefaultDependencyResolutionRequest(project, buildingRequest.getRepositorySession()));
-        DependencyNode rootNode = result.getDependencyGraph();
 
-        return lookupConfiguredMojo(project, goal);
+//        ProjectDependenciesResolver resolver = lookup(ProjectDependenciesResolver.class);
+//        DependencyResolutionResult result = resolver.resolve(
+//                new DefaultDependencyResolutionRequest(project, buildingRequest.getRepositorySession()));
+//        DependencyNode rootNode = result.getDependencyGraph();
+
+
+        StageDependenciesMojo mojo = lookupConfiguredMojo(project, goal);
+        mojo.setProjectBuilder(projectBuilder);
+        return mojo;
     }
 
 }

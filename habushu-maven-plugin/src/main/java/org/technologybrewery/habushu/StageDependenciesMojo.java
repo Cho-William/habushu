@@ -42,6 +42,9 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
     @Parameter(property = "session", required = true, readonly = true)
     protected MavenSession session;
 
+    @Parameter(property = "projectBuilder", required = true, readonly = true)
+    ProjectBuilder projectBuilder;
+
     protected File anchorDirectory;
 
     protected final String HABUSHU = "habushu";
@@ -54,9 +57,18 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
         this.session = session;
     }
 
+    protected ProjectBuilder getProjectBuilder() {
+        return this.projectBuilder;
+    }
+
+    protected void setProjectBuilder(ProjectBuilder projectBuilder) {
+        this.projectBuilder = projectBuilder;
+    }
+
     @Override
     protected void doExecute() throws MojoExecutionException, MojoFailureException {
         logger.info("Actual Mojo Session:", getSession());
+
         mockSuceess();
         // String actualPath = mojo.getSession().getCurrentProject().getBuild().getDirectory() + "/venv-support";
         // String expectedPath = getRootParent(mojo.getSession().getCurrentProject()).getBasedir().toString();
@@ -64,6 +76,14 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
     }
 
     protected Set<Dependency> getHabushuTypeDependenciesWithTransitives() {
+        MavenProject parentProject;
+        try {
+            parentProject = projectBuilder.build(getSession().getCurrentProject().getParentFile(), getSession().getProjectBuildingRequest()).getProject();
+            String s;
+        } catch (ProjectBuildingException e) {
+            throw new RuntimeException(e);
+        }
+
         Set<Dependency> habushuDependencies = new HashSet<>();
         for (Dependency dependency : getSession().getCurrentProject().getModel().getDependencies()) {
             if (Objects.equals(dependency.getType(), HABUSHU)) {
@@ -86,23 +106,6 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
         DependencyResolutionResult result = resolver.resolve(request);
         DependencyNode rootNode = result.getDependencyGraph();
 
-
-        try {
-            List<MavenProject> projects = new ArrayList<>();
-            projects.add(getSession().getCurrentProject());
-            DefaultProjectDependencyGraph depGraph = new DefaultProjectDependencyGraph(projects);
-            depGraph.getUpstreamProjects(projects.get(0), true);
-
-            Model depModel = new Model();
-            FileReader reader;
-            MavenXpp3Reader mavenreader = new MavenXpp3Reader();
-            File depPomFile = new File(dependency.getLocation("").getSource().getLocation());
-            reader = new FileReader(depPomFile);
-            depModel = mavenreader.read(reader);
-            depModel.setPomFile(depPomFile);
-        } catch (Exception e){
-            throw new RuntimeException();
-        }
         // MavenProject project = new MavenProject(depModel);
         // if (new MavenProject()dependency.getSystemPath())
         return new HashSet<>();
