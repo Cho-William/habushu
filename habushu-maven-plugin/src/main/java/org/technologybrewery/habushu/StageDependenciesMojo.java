@@ -68,25 +68,29 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
         Path srcRoot = this.anchorSourceDirectory.toPath();
         Path destRoot = this.anchorOutputDirectory.toPath();
 
-        FileSet fileSet = getDefaultFileSet();
+        Map<Path, FileSet> dependencyFileSets = new HashMap<>();
         for (MavenProject project : habushuProjects) {
             Path projectPath = project.getFile().getParentFile().toPath();
             Path relativeProjectPath = srcRoot.relativize(projectPath);
-            fileSet.addInclude(relativeProjectPath + "/**");
+            FileSet fileSet = getDefaultFileSet();
+            fileSet.setDirectory(projectPath.toString());
+            dependencyFileSets.put(relativeProjectPath, fileSet);
         }
 
+
         FileSetManager fileSetManager = new FileSetManager();
-        for (String includedFile : fileSetManager.getIncludedFiles(fileSet)) {
-            Files.createDirectories(destRoot.resolve(includedFile).getParent());
-            Files.copy(srcRoot.resolve(includedFile), destRoot.resolve(includedFile));
+        for (Path project : dependencyFileSets.keySet()) {
+            FileSet fileSet = dependencyFileSets.get(project);
+            for (String includedFile : fileSetManager.getIncludedFiles(fileSet)) {
+                Path relativePath = project.resolve(includedFile);
+                Files.createDirectories(destRoot.resolve(relativePath).getParent());
+                Files.copy(srcRoot.resolve(relativePath), destRoot.resolve(relativePath));
+            }
         }
     }
 
     private FileSet getDefaultFileSet() {
         FileSet fileSet = new FileSet();
-        fileSet.setDirectory(this.anchorSourceDirectory.getAbsolutePath());
-        fileSet.setOutputDirectory(this.anchorOutputDirectory.getAbsolutePath());
-        fileSet.addExclude("**"); // Exclude files directly under the root
         fileSet.addExclude("target");
         fileSet.addExclude(".venv");
         fileSet.addExclude("dist");
