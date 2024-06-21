@@ -162,6 +162,44 @@ For example, developers may use this feature to bind a Habushu module's `compile
 	</plugin>
 ```
 
+### Leveraging the containerize-dependencies Goal to Prepare a Containerized Virtual Environment ###
+If the execution is specified (does not run by default), the `containerize-dependencies` goal will collect the monorepo python dependency specified in the dependencies block of the project's `pom.xml`, including all transitive dependencies. After collecting the set of necessary dependencies, Habushu will copy the source files to the build directory, while preserving the original structure of the dependency modules to ensure that any path-based dependencies can be leveraged as-is.
+
+```xml
+	<plugin>
+		<groupId>org.technologybrewery.habushu</groupId>
+		<artifactId>habushu-maven-plugin</artifactId>
+		<extensions>true</extensions>
+		<configuration>
+		...
+		</configuration>
+		<executions>
+			<execution>
+				<id>containerize-deps</id>
+				<phase>validate</phase>
+				<goals>
+					<goal>containerize-dependencies</goal>
+				</goals>
+			</execution>
+		</executions>
+	</plugin>
+```
+
+The plugin will only examine dependencies that are of the type `habushu` in the dependencies block of the `pom.xml` file. 
+
+```xml
+    <dependencies>
+        <dependency>
+          <groupId>your-group-id</groupId>
+          <artifactId>your-artifact-id</artifactId>
+          <version>your-version</version>
+          <type>habushu</type>
+        </dependency>
+    </dependencies>
+```
+
+Any transitive monorepo dependency `pom.xml` files shoud also use this convention to ensure they are capture by the plugin.
+
 ### Leveraging Maven Build Cache for Faster Builds ###
 
 Habushu enables support for faster builds via
@@ -682,13 +720,15 @@ Folder in which Python test files are located - should align with Poetry's proje
 
 Default: `${project.basedir}/tests`
 
-#### cacheWheels ####
+#### cacheWheels (deprecated) ####
+The `cache-wheels` goal has been `deprecated`, please see the `containerize-dependencies` goal instead.
 
 Enables or Disables the copying of wheels into Poetry cache.
 
 Default: `false`
 
-#### wheelDependencies ####
+#### wheelDependencies (deprecated) ####
+The `retrieve-wheels` goal has been `deprecated`, please see the `containerize-dependencies` goal instead.
 
 Optional set of wheel dependencies to retrieve from poetry cache. This allows previously cached external 
 wheel dependencies to be copied into a given target directory if it exists in poetry cache. This logic 
@@ -876,8 +916,7 @@ Uses [behave](https://github.com/behave/behave) to execute BDD scenarios that ar
 Builds the `sdist` and `wheel` archives of this project using `poetry build`. It also generates a `requirements.txt` file which is useful when installing the package in a Docker container where you may want to install the dependencies in a specific Docker layer to optimize caching.
 
 ##### install #####
-Publishes the `pom.xml` for the module into your local Maven Repository (`~/.m2/repository`). If the **cacheWheels** configuration is set to True, the `wheel` archive will be copied to the poetry cache directory (`~/{poetry-cache-dir}/cache/repositories/wheels/{artifact-id}/`). The **cacheWheels** configuration default behavior is not to cache the `wheel` archive. If the **wheelDependencies** list is set, each specified wheel dependency will be 
-retrieve and placed into the given target directory.
+Publishes the `pom.xml` for the module into your local Maven Repository (`~/.m2/repository`).
 
 ##### deploy #####
 
