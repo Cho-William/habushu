@@ -5,7 +5,6 @@ import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
-import org.apache.commons.io.IOUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.junit.jupiter.api.Assertions;
@@ -20,8 +19,6 @@ import java.util.stream.Stream;
 
 public class StageDependenciesSteps {
 
-    protected String testDefaultSingleMonorepoDepPath = "src/test/resources/stage-dependencies/"
-            + "default-single-monorepo-dep/test-monorepo";
     protected String targetDefaultNoMonorepoDepPath = "target/test-classes/stage-dependencies/"
             + "default-no-monorepo-dep/test-monorepo";
     protected String targetDefaultSingleMonorepoDepPath = "target/test-classes/stage-dependencies/"
@@ -50,12 +47,14 @@ public class StageDependenciesSteps {
     public void a_single_habushu_type_dependency() throws Exception {
         mavenProjectPath = targetDefaultSingleMonorepoDepPath + "/extensions/extensions-monorepo-dep-consuming-application";
 
-        mojoTestCase.addMavenProjectFile(new File("src/test/resources/stage-dependencies/default-single-monorepo-dep/test-monorepo/extensions/extensions-python-dep-X/pom.xml"));
-        mojoTestCase.addMavenProjectFile(new File("src/test/resources/stage-dependencies/default-single-monorepo-dep/test-monorepo/foundation/foundation-python-dep-Y/pom.xml"));
+        // enables us to mock a maven build with the --also-make flag
+        mojoTestCase.addMavenProjectFile(new File(targetDefaultSingleMonorepoDepPath + "/extensions/extensions-python-dep-X/pom.xml"));
+        mojoTestCase.addMavenProjectFile(new File(targetDefaultSingleMonorepoDepPath + "/foundation/foundation-python-dep-Y/pom.xml"));
 
         mojo = (StageDependenciesMojo) mojoTestCase.lookupConfiguredMojo(
                 new File(mavenProjectPath, POM_FILE), "stage-dependencies"
         );
+        mojo.setAnchorSourceDirectory(new File("target/test-classes/stage-dependencies/default-single-monorepo-dep/test-monorepo").getAbsoluteFile());
     }
 
     @When("the stage-dependencies goal is executed")
@@ -65,11 +64,7 @@ public class StageDependenciesSteps {
 
     @Then("the sources files of the dependency and transitive Habushu-type dependencies are staged and structured")
     public void the_source_files_of_the_dependency_and_transitive_habushu_type_dependencies_are_staged_and_structured() {
-        Set<String> expectedHabushuDirsNames = new HashSet<>();
-        expectedHabushuDirsNames.add("extensions/extensions-python-dep-X");
-        expectedHabushuDirsNames.add("foundation/foundation-python-dep-Y");
-        expectedHabushuDirsNames.add("foundation/foundation-sub/foundation-sub-python-dep-Z");
-        assertStaged(new File(testDefaultSingleMonorepoDepPath), mojo.getAnchorOutputDirectory(), expectedHabushuDirsNames);
+        assertStaged(mojo.getAnchorOutputDirectory());
     }
 
     @Given("no Habushu-type dependencies")
@@ -87,13 +82,13 @@ public class StageDependenciesSteps {
     }
 
     private boolean isNonExistentOrEmptyDir(File dir) {
+        // Directory does not exist
         if (!dir.exists()) {
-            // Directory does not exist
             return true;
         }
 
+        // The path exists but is not a directory
         if (!dir.isDirectory()) {
-            // The path exists but is not a directory
             return false;
         }
 
@@ -102,36 +97,24 @@ public class StageDependenciesSteps {
         return contents == null || contents.length == 0;
     }
 
-    private void assertStaged(File expectedRoot, File actual, Set<String> expectedHabushuDirNames) {
+    private void assertStaged(File actual) {
+        Set<Path> actualFiles;
         try {
-            // find the subdirectory of the source that matches the stage anchor of the mojo
-            // File expected = getMatchingDir(actual.getName(), expectedRoot);
-
-            // relativize
-            Set<Path> actualFiles = getRelativizedPaths(actual);
-
-
-
-            assertFile(actualFiles, "test-monorepo/extensions/extensions-python-dep-X/src/python_dep_x/python_dep_x.py");
-            assertFile(actualFiles, "test-monorepo/extensions/extensions-python-dep-X/pyproject.toml");
-            assertFile(actualFiles, "test-monorepo/extensions/extensions-python-dep-X/README.md");
-            assertFile(actualFiles, "test-monorepo/foundation/foundation-python-dep-Y/src/python_dep_x/python_dep_y.py");
-            assertFile(actualFiles, "test-monorepo/foundation/foundation-python-dep-Y/pyproject.toml");
-            assertFile(actualFiles, "test-monorepo/foundation/foundation-python-dep-Y/README.md");
-
+            actualFiles = getRelativizedPaths(actual);
         } catch (Exception e) {
             throw new RuntimeException();
         }
+
+        assertFile(actualFiles, "extensions/extensions-python-dep-X/src/python_dep_x/python_dep_x.py");
+        assertFile(actualFiles, "extensions/extensions-python-dep-X/pyproject.toml");
+        assertFile(actualFiles, "extensions/extensions-python-dep-X/README.md");
+        assertFile(actualFiles, "foundation/foundation-python-dep-Y/src/python_dep_y/python_dep_y.py");
+        assertFile(actualFiles, "foundation/foundation-python-dep-Y/pyproject.toml");
+        assertFile(actualFiles, "foundation/foundation-python-dep-Y/README.md");
     }
 
     private static void assertFile(Set<Path> actualFiles, String path) {
         Assertions.assertTrue(actualFiles.contains(Paths.get(path)), "Could not find: " + path);
-    }
-
-    private boolean filesHaveSameContent(File expectedFile, File actualFile) throws IOException {
-        InputStream expectedStream = new FileInputStream(expectedFile);
-        InputStream actualStream = new FileInputStream(actualFile);
-        return IOUtils.contentEquals(expectedStream, actualStream);
     }
 
     private Set<Path> getRelativizedPaths(File rootDir) throws IOException {
@@ -143,28 +126,4 @@ public class StageDependenciesSteps {
         }
     }
 
-    private File getMatchingDir(String name, File startDir) {
-        List<File> matches = new ArrayList<>();
-        try {
-            List<File> contents = walkDirectory(startDir.toPath());
-            for (File file : contents) {
-                if (file.toPath().toString().endsWith(name) && file.isDirectory()) {
-                    matches.add(file);
-                }
-            }
-        } catch (IOException e) {
-            throw new RuntimeException();
-        }
-        if (matches.size() != 1) {
-            throw new RuntimeException();
-        } else {
-            return matches.get(0);
-        }
-    }
-
-    private static List<File> walkDirectory(Path startDir) throws IOException {
-        try (Stream<Path> stream = Files.walk(startDir)) {
-            return stream.map(Path::toFile).collect(Collectors.toList());
-        }
-    }
 }
