@@ -5,7 +5,9 @@ import org.apache.maven.Maven;
 import org.apache.maven.execution.*;
 import org.apache.maven.plugin.Mojo;
 import org.apache.maven.plugin.testing.AbstractMojoTestCase;
-import org.apache.maven.project.*;
+import org.apache.maven.project.MavenProject;
+import org.apache.maven.project.ProjectBuilder;
+import org.apache.maven.project.ProjectBuildingRequest;
 import org.apache.maven.session.scope.internal.SessionScope;
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.internal.impl.SimpleLocalRepositoryManagerFactory;
@@ -24,9 +26,9 @@ import java.util.List;
  * This class is largely adapted from the testing approach developed by the license-audit-maven-plugin's
  * {@code BetterAbstractMojoTestCase} (https://github.com/ahgittin/license-audit-maven-plugin)
  */
-public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
+public class ContainerizeDependenciesMojoTestCase extends AbstractMojoTestCase {
 
-    private static final Logger logger = LoggerFactory.getLogger(StageDependenciesMojoTestCase.class);
+    private static final Logger logger = LoggerFactory.getLogger(ContainerizeDependenciesMojoTestCase.class);
 
     private List<File> mavenProjectFiles = new ArrayList<>();
 
@@ -75,7 +77,6 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
             sessionScope.enter();
             sessionScope.seed(MavenSession.class, session);
 
-            logger.info("TestCase Session with Make Behavior set:", session);
             return session;
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -84,7 +85,7 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
 
     /**
      * Overrides super's {@link #newMavenSession(MavenProject)} to delegate to
-     * the new {@link #newDefaultMavenSession()} introduced in {@link StageDependenciesMojoTestCase},
+     * the new {@link #newDefaultMavenSession()} introduced in {@link ContainerizeDependenciesMojoTestCase},
      * which sets the defaults that are normally expected by Maven.
      */
     @Override
@@ -124,7 +125,6 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
      *
      * @param pom  {@code pom.xml} file defining desired plugin and configuration to test.
      * @param goal target plugin goal for which to create the associated {@link Mojo}
-     * @param session
      * @return
      * @throws Exception
      */
@@ -132,25 +132,13 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
         assertNotNull(pom);
         assertTrue(pom.exists());
 
-        // how can I add -am to this building request or do I just do the root project pom for testing?
         MavenSession session = newDefaultMavenSession();
         ProjectBuildingRequest buildingRequest = session.getProjectBuildingRequest();
         buildingRequest.setResolveDependencies(true);
         ProjectBuilder projectBuilder = lookup(ProjectBuilder.class);
 
         MavenProject project = projectBuilder.build(pom, buildingRequest).getProject();
-//        StageDependenciesMojo mojo = (StageDependenciesMojo) lookupConfiguredMojo(project, goal);
-//        mojo.getSession().getRequest().setMakeBehavior(MavenExecutionRequest.REACTOR_MAKE_UPSTREAM);
-
-//        ProjectDependenciesResolver resolver = lookup(ProjectDependenciesResolver.class);
-//        DependencyResolutionResult result = resolver.resolve(
-//                new DefaultDependencyResolutionRequest(project, buildingRequest.getRepositorySession()));
-//        DependencyNode rootNode = result.getDependencyGraph();
-
-
-        StageDependenciesMojo mojo = lookupConfiguredMojo(project, goal);
-
-        //mojo.setProjectBuilder(projectBuilder);
+        ContainerizeDependenciesMojo mojo = lookupConfiguredMojo(project, goal);
         return mojo;
     }
 

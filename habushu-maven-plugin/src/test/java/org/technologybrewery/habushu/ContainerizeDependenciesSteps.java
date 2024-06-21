@@ -9,35 +9,36 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.junit.jupiter.api.Assertions;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class StageDependenciesSteps {
+public class ContainerizeDependenciesSteps {
 
-    protected String targetDefaultNoMonorepoDepPath = "target/test-classes/stage-dependencies/"
+    protected String targetDefaultNoMonorepoDepPath = "target/test-classes/containerize-dependencies/"
             + "default-no-monorepo-dep/test-monorepo";
-    protected String targetDefaultSingleMonorepoDepPath = "target/test-classes/stage-dependencies/"
+    protected String targetDefaultSingleMonorepoDepPath = "target/test-classes/containerize-dependencies/"
             + "default-single-monorepo-dep/test-monorepo";
     protected String mavenProjectPath;
     private final String POM_FILE = "pom.xml";
 
-    private final StageDependenciesMojoTestCase mojoTestCase = new StageDependenciesMojoTestCase();
+    private final ContainerizeDependenciesMojoTestCase mojoTestCase = new ContainerizeDependenciesMojoTestCase();
 
-    private StageDependenciesMojo mojo;
+    private ContainerizeDependenciesMojo mojo;
 
-    @Before("@stageDependencies")
+    @Before("@containerizeDependencies")
     public void configureMavenTestSession() throws Exception {
         // important for registering Habushu's mojos to AbstractTestCase.mojoDescriptors,
         // which ensures that lookupConfiguredMojo will return the configured mojo
         mojoTestCase.configurePluginTestHarness();
     }
 
-    @After("@stageDependencies")
+    @After("@containerizeDependencies")
     public void tearDownMavenPluginTestHarness() throws Exception {
         mojoTestCase.clearMavenProjectFiles();
         mojoTestCase.tearDownPluginTestHarness();
@@ -51,16 +52,16 @@ public class StageDependenciesSteps {
         mojoTestCase.addMavenProjectFile(new File(targetDefaultSingleMonorepoDepPath + "/extensions/extensions-python-dep-X/pom.xml"));
         mojoTestCase.addMavenProjectFile(new File(targetDefaultSingleMonorepoDepPath + "/foundation/foundation-python-dep-Y/pom.xml"));
 
-        mojo = (StageDependenciesMojo) mojoTestCase.lookupConfiguredMojo(
-                new File(mavenProjectPath, POM_FILE), "stage-dependencies"
+        mojo = (ContainerizeDependenciesMojo) mojoTestCase.lookupConfiguredMojo(
+                new File(mavenProjectPath, POM_FILE), "containerize-dependencies"
         );
-        mojo.setAnchorSourceDirectory(new File("target/test-classes/stage-dependencies/default-single-monorepo-dep/test-monorepo").getAbsoluteFile());
+        mojo.setAnchorSourceDirectory(new File("target/test-classes/containerize-dependencies/default-single-monorepo-dep/test-monorepo").getAbsoluteFile());
         mojo.session.getRequest().setBaseDirectory(new File(targetDefaultSingleMonorepoDepPath));
 
     }
 
-    @When("the stage-dependencies goal is executed")
-    public void the_stage_dependencies_goal_is_executed() throws MojoExecutionException, MojoFailureException {
+    @When("the containerize-dependencies goal is executed")
+    public void the_containerize_dependencies_goal_is_executed() throws MojoExecutionException, MojoFailureException {
         mojo.execute();
     }
 
@@ -72,8 +73,8 @@ public class StageDependenciesSteps {
     @Given("no Habushu-type dependencies")
     public void no_habushu_type_dependencies() throws Exception {
         mavenProjectPath = targetDefaultNoMonorepoDepPath + "/no-monorepo-dep-application";
-        mojo = (StageDependenciesMojo) mojoTestCase.lookupConfiguredMojo(
-                new File(mavenProjectPath, POM_FILE), "stage-dependencies"
+        mojo = (ContainerizeDependenciesMojo) mojoTestCase.lookupConfiguredMojo(
+                new File(mavenProjectPath, POM_FILE), "containerize-dependencies"
         );
         mojo.session.getRequest().setBaseDirectory(new File(targetDefaultNoMonorepoDepPath));
     }
