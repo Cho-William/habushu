@@ -91,9 +91,9 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
 
     private FileSet getDefaultFileSet() {
         FileSet fileSet = new FileSet();
-        fileSet.addExclude("target");
-        fileSet.addExclude(".venv");
-        fileSet.addExclude("dist");
+        fileSet.addExclude("target/**");
+        fileSet.addExclude(".venv/**");
+        fileSet.addExclude("dist/**");
         return fileSet;
     }
 

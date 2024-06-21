@@ -23,7 +23,9 @@ import org.technologybrewery.habushu.util.HabushuUtil;
  *                          wheel artifacts cached by the {@param cacheWheels} parameter and REQUIRES 
  *                          the requested wheel to have first been cached prior to setting this config
  * @throws HabushuException
+ * @deprecated This mojo is deprecated, use the stage-dependencies goal instead
  */
+@Deprecated
 @Mojo(name = "retrieve-wheels", defaultPhase = LifecyclePhase.VALIDATE)
 public class RetrieveWheelsMojo extends AbstractHabushuMojo {
     /**
