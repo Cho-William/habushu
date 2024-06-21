@@ -1,21 +1,24 @@
 package org.technologybrewery.habushu;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.project.*;
+import org.apache.maven.shared.model.fileset.FileSet;
+import org.apache.maven.shared.model.fileset.util.FileSetManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Helper mojo that stages the source files of a monorepo dependency
@@ -47,7 +50,7 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
     @Override
     protected void doExecute() throws MojoExecutionException, MojoFailureException {
         if (this.anchorSourceDirectory == null) {
-            this.anchorSourceDirectory = getProjectRoot(this.session.getCurrentProject());
+            this.anchorSourceDirectory = getUpstreamRoot(this.session.getCurrentProject());
         }
 
         Set<MavenProject> habushuProjects = getHabushuProjects();
@@ -60,69 +63,94 @@ public class StageDependenciesMojo extends AbstractHabushuMojo {
 
 
     private void copyRelevant(Set<MavenProject> habushuProjects) throws IOException {
-        File destDir = new File(getSession().getCurrentProject().getBuild().getDirectory()
+        this.anchorOutputDirectory = new File(project.getBuild().getDirectory()
                 + "/venv-support/" + this.anchorSourceDirectory.getName());
-        this.anchorOutputDirectory = destDir;
+        Path srcRoot = this.anchorSourceDirectory.toPath();
+        Path destRoot = this.anchorOutputDirectory.toPath();
 
+        FileSet fileSet = getDefaultFileSet();
         for (MavenProject project : habushuProjects) {
-            Path habushuDir = project.getFile().getParentFile().toPath();
-            Path a = this.anchorSourceDirectory.toPath().relativize(habushuDir);
-            if (!destDir.exists()) {
-                FileUtils.forceMkdir(destDir);
-            }
+            Path projectPath = project.getFile().getParentFile().toPath();
+            Path relativeProjectPath = srcRoot.relativize(projectPath);
+            fileSet.addInclude(relativeProjectPath + "/**");
+        }
 
-            FileFilter fileFilter = file -> {
-                if (file.isDirectory() && blackListCheck(file)) {
-                    return false;
-                } else {
-                    return true;
-                }
-            };
-
-            FileUtils.copyDirectory(habushuDir.toFile(), destDir.toPath().resolve(a).toFile(), fileFilter);
+        FileSetManager fileSetManager = new FileSetManager();
+        for (String includedFile : fileSetManager.getIncludedFiles(fileSet)) {
+            Files.createDirectories(destRoot.resolve(includedFile).getParent());
+            Files.copy(srcRoot.resolve(includedFile), destRoot.resolve(includedFile));
         }
     }
 
-    private boolean blackListCheck(File file) {
-        boolean returnBool;
-        returnBool = file.getName().equals(".venv");
-        returnBool = returnBool || file.getName().equals("dist");
-        returnBool = returnBool || file.getName().equals("target");
-        return returnBool;
+    private FileSet getDefaultFileSet() {
+        FileSet fileSet = new FileSet();
+        fileSet.setDirectory(this.anchorSourceDirectory.getAbsolutePath());
+        fileSet.setOutputDirectory(this.anchorOutputDirectory.getAbsolutePath());
+        fileSet.addExclude("**"); // Exclude files directly under the root
+        fileSet.addExclude("target");
+        fileSet.addExclude(".venv");
+        fileSet.addExclude("dist");
+        return fileSet;
     }
 
-    protected File getProjectRoot(MavenProject project) {
-        MavenProject lastValidProject = project;
+    /**
+     * Determines the uppermost parent project's directory that exists locally
+     * @param project the project that will be examined for its upstream parents
+     * @return the uppermost upstream basedir that exists locally
+     */
+    protected File getUpstreamRoot(MavenProject project) {
+//        MavenProject lastValidProject = project;
+//
+//        // Traverse up the parent hierarchy
+//        while (lastValidProject.getModel().getParent() != null) {
+//            MavenProject parentProject = lastValidProject.getParent();
+//            if (parentProject != null) {
+//                // Check if the parent's POM file exists
+//                if (parentProject.getBasedir() != null) {
+//                    // Update the last valid project
+//                    lastValidProject = parentProject;
+//                } else {
+//                    // Stop if the parent POM does not exist
+//                    break;
+//                }
+//            } else {
+//                // Stop if there is no parent project
+//                break;
+//            }
+//        }
 
-        // Traverse up the parent hierarchy
-        while (lastValidProject.getModel().getParent() != null) {
-            MavenProject parentProject = lastValidProject.getParent();
-            if (parentProject != null) {
-                // Check if the parent's POM file exists
-                if (parentProject.getBasedir() != null) {
-                    // Update the last valid project
-                    lastValidProject = parentProject;
-                } else {
-                    // Stop if the parent POM does not exist
-                    break;
-                }
-            } else {
-                // Stop if there is no parent project
-                break;
-            }
-        }
-
-        return lastValidProject.getBasedir();
+        return new File(session.getExecutionRootDirectory());
     }
 
+    /**
+     * Checks listed habushu-type dependencies against the set of projects included in the Maven build's session
+     * @return the corresponding Maven projects that match the habushu-type dependencies
+     */
     protected Set<MavenProject> getHabushuProjects() {
-        Set<MavenProject> habushuProjects = new HashSet<>();
+        MavenProject project1 = project;
+        HashSet<MavenProject> habushuProjects = new HashSet<>();
+        collectHabushuDependencies(project1, habushuProjects);
+        return habushuProjects;
+    }
+
+    private void collectHabushuDependencies(MavenProject project1, Set<MavenProject> habushuProjects) {
+        Set<String> habushuDeps = project1.getDependencies().stream()
+                .filter(d -> HABUSHU.equals(d.getType()))
+                .map(StageDependenciesMojo::toGav)
+                .collect(Collectors.toSet());
         for (MavenProject project : getSession().getProjects()) {
-            if (Objects.equals(project.getModel().getPackaging(), HABUSHU)) {
+            if (habushuDeps.contains(toGav(project))) {
                 habushuProjects.add(project);
+                collectHabushuDependencies(project, habushuProjects);
             }
         }
-        return habushuProjects;
+    }
+
+    private static String toGav(Dependency dependency) {
+        return dependency.getGroupId() + ":" + dependency.getArtifactId() + ":" + dependency.getVersion();
+    }
+    private static String toGav(MavenProject project) {
+        return project.getGroupId() + ":" + project.getArtifactId() + ":" + project.getVersion();
     }
 
     protected MavenSession getSession() {

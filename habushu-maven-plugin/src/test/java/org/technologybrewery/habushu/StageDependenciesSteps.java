@@ -55,6 +55,8 @@ public class StageDependenciesSteps {
                 new File(mavenProjectPath, POM_FILE), "stage-dependencies"
         );
         mojo.setAnchorSourceDirectory(new File("target/test-classes/stage-dependencies/default-single-monorepo-dep/test-monorepo").getAbsoluteFile());
+        mojo.session.getRequest().setBaseDirectory(new File(targetDefaultSingleMonorepoDepPath));
+
     }
 
     @When("the stage-dependencies goal is executed")
@@ -73,6 +75,7 @@ public class StageDependenciesSteps {
         mojo = (StageDependenciesMojo) mojoTestCase.lookupConfiguredMojo(
                 new File(mavenProjectPath, POM_FILE), "stage-dependencies"
         );
+        mojo.session.getRequest().setBaseDirectory(new File(targetDefaultNoMonorepoDepPath));
     }
 
     @Then("no source files are staged in the build directory")

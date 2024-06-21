@@ -3,25 +3,18 @@ package org.technologybrewery.habushu;
 import org.apache.maven.DefaultMaven;
 import org.apache.maven.Maven;
 import org.apache.maven.execution.*;
-import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.Mojo;
 import org.apache.maven.plugin.testing.AbstractMojoTestCase;
 import org.apache.maven.project.*;
 import org.apache.maven.session.scope.internal.SessionScope;
-import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
 import org.eclipse.aether.DefaultRepositorySystemSession;
-import org.eclipse.aether.graph.DependencyNode;
 import org.eclipse.aether.internal.impl.SimpleLocalRepositoryManagerFactory;
 import org.eclipse.aether.repository.LocalRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.maven.execution.MavenExecutionRequest.REACTOR_MAKE_UPSTREAM;
-
 import java.io.File;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -131,6 +124,7 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
      *
      * @param pom  {@code pom.xml} file defining desired plugin and configuration to test.
      * @param goal target plugin goal for which to create the associated {@link Mojo}
+     * @param session
      * @return
      * @throws Exception
      */
@@ -155,6 +149,7 @@ public class StageDependenciesMojoTestCase extends AbstractMojoTestCase {
 
 
         StageDependenciesMojo mojo = lookupConfiguredMojo(project, goal);
+
         //mojo.setProjectBuilder(projectBuilder);
         return mojo;
     }
