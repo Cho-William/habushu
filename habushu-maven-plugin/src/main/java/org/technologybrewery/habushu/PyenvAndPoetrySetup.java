@@ -26,7 +26,7 @@ import java.util.List;
  * <li>Required Poetry plugins (currently only {@code poetry-monorepo-dependency-plugin})</li>
  * </ul>
  */
-class PyenvAndPoetrySetup {
+public class PyenvAndPoetrySetup {
 
     /**
      * Specifies the semver compliant requirement for the default version of Python that

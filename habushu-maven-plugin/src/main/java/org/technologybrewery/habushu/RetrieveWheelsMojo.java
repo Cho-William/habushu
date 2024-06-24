@@ -23,7 +23,9 @@ import org.technologybrewery.habushu.util.HabushuUtil;
  *                          wheel artifacts cached by the {@param cacheWheels} parameter and REQUIRES 
  *                          the requested wheel to have first been cached prior to setting this config
  * @throws HabushuException
+ * @deprecated This mojo is deprecated, use the containerize-dependencies goal instead
  */
+@Deprecated
 @Mojo(name = "retrieve-wheels", defaultPhase = LifecyclePhase.VALIDATE)
 public class RetrieveWheelsMojo extends AbstractHabushuMojo {
     /**
@@ -42,6 +44,8 @@ public class RetrieveWheelsMojo extends AbstractHabushuMojo {
 
     @Override
     public void doExecute() throws MojoExecutionException, MojoFailureException {
+        getLog().warn("The cache-wheels goal has been deperecated," +
+                "please see the containerize-dependencies goal instead." );
         if (!wheelDependencies.isEmpty()) {
             processWheelDependencies();
         }
@@ -54,13 +58,13 @@ public class RetrieveWheelsMojo extends AbstractHabushuMojo {
                 File poetryCacheWheelDirectory = getCachedWheelDirectory(wd.getArtifactId());
                 String targetDirectory = wd.getTargetDirectory();
 
-                if(poetryCacheWheelDirectory.exists()){
+                if (poetryCacheWheelDirectory.exists()) {
                     List<File> wheelFiles = Stream.of(poetryCacheWheelDirectory.listFiles())
                             .filter(file -> file.getAbsolutePath().endsWith(".whl"))
                             .map(File::getAbsoluteFile)
                             .collect(Collectors.toList());
 
-                    if(wheelFiles.size()==0){
+                    if (wheelFiles.size()==0) {
                         getLog().warn(String.format("Did not find any %s wheels in poetry cache.", wd.getArtifactId()));
                         getLog().warn("Consider using the `cacheWheel` configuration to cache the wheel artifact before depending on it.");
                     } else {

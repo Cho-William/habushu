@@ -14,7 +14,6 @@ import org.technologybrewery.habushu.util.HabushuUtil;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -122,8 +121,10 @@ public class CleanHabushuMojo extends CleanMojo {
         List<Fileset> filesetsToDelete = new ArrayList<>();
         boolean removeVenvManually = false;
 
-        String virtualEnvFullPath = findCurrentVirtualEnvironmentFullPath();
-        virtualEnvFullPath = getCleanVirtualEnvironmentPath(virtualEnvFullPath);
+        String virtualEnvFullPath = HabushuUtil.findCurrentVirtualEnvironmentFullPath(
+                pythonVersion, usePyenv, patchInstallScript,
+                workingDirectory, rewriteLocalPathDepsInArchives, getLog());
+        virtualEnvFullPath = HabushuUtil.getCleanVirtualEnvironmentPath(virtualEnvFullPath);
 
         String inVirtualEnvironmentPath = HabushuUtil.getInProjectVirtualEnvironmentPath(this.workingDirectory);
         File venv = new File(inVirtualEnvironmentPath);
@@ -188,33 +189,7 @@ public class CleanHabushuMojo extends CleanMojo {
         super.execute();
     }
 
-    /**
-     * Removes (Activated) from path in 1.3.x and higher versions.
-     *
-     * @param virtualEnvFullPath path to clean
-     * @return cleaned path
-     */
-    private static String getCleanVirtualEnvironmentPath(String virtualEnvFullPath) {
-        return StringUtils.replace(virtualEnvFullPath, " (Activated)", StringUtils.EMPTY);
 
-    }
-
-    private String findCurrentVirtualEnvironmentFullPath() throws MojoExecutionException {
-        String virtualEnvFullPath = null;
-        PyenvAndPoetrySetup configureTools = new PyenvAndPoetrySetup(pythonVersion, usePyenv,
-                patchInstallScript, workingDirectory, rewriteLocalPathDepsInArchives, getLog());
-        configureTools.execute();
-
-        try {
-            PoetryCommandHelper poetryHelper = new PoetryCommandHelper(this.workingDirectory);
-            virtualEnvFullPath = poetryHelper.execute(Arrays.asList("env", "list", "--full-path"));
-        } catch (RuntimeException e) {
-            getLog().debug("Could not retrieve Poetry-managed virtual environment path - it likely does not exist",
-                    e);
-        }
-
-        return virtualEnvFullPath;
-    }
 
     /**
      * Creates a new {@link Fileset} that may be used to identify a set of files
