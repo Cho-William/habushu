@@ -57,8 +57,6 @@ public class ContainerizeDepsMojoTestWrapper extends AbstractMojoTestCase {
             // Enables the usage of Java system properties for interpolation and profile activation
             request.setSystemProperties(System.getProperties());
 
-            request.setMakeBehavior(MavenExecutionRequest.REACTOR_MAKE_UPSTREAM);
-
             // Ensures that the repo session in the maven session has a repo manager and points to the local repo
             DefaultMaven maven = (DefaultMaven) getContainer().lookup(Maven.class);
             DefaultRepositorySystemSession repoSession =
@@ -96,8 +94,15 @@ public class ContainerizeDepsMojoTestWrapper extends AbstractMojoTestCase {
         try {
             ProjectBuilder projectBuilder = lookup(ProjectBuilder.class);
 
-            for(File mavenProjectFile: this.mavenProjectFiles) {
-                mavenProjects.add(projectBuilder.build(mavenProjectFile, session.getProjectBuildingRequest()).getProject());
+            for (File mavenProjectFile: this.mavenProjectFiles) {
+                ProjectBuildingRequest request = session.getProjectBuildingRequest();
+
+                // prevents the project instantiation from attempting to resolve the test mock project's
+                // dependencies and plugins
+                request.setResolveDependencies(false);
+                request.setProcessPlugins(false);
+
+                mavenProjects.add(projectBuilder.build(mavenProjectFile, request).getProject());
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -134,12 +139,10 @@ public class ContainerizeDepsMojoTestWrapper extends AbstractMojoTestCase {
 
         MavenSession session = newDefaultMavenSession();
         ProjectBuildingRequest buildingRequest = session.getProjectBuildingRequest();
-        buildingRequest.setResolveDependencies(true);
         ProjectBuilder projectBuilder = lookup(ProjectBuilder.class);
 
         MavenProject project = projectBuilder.build(pom, buildingRequest).getProject();
-        ContainerizeDepsMojo mojo = lookupConfiguredMojo(project, goal);
-        return mojo;
+        return lookupConfiguredMojo(project, goal);
     }
 
 
