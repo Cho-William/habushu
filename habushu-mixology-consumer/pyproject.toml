@@ -10,13 +10,11 @@ habushu-mixology = {path = "../habushu-mixology", develop = true}
 python = "^3.11"
 
 [tool.poetry.group.dev.dependencies]
+behave = ">=1.2.6"
+black = ">=24.3.0"
 kappa-maki = ">=1.0.0"
-behave-cucumber-formatter = ">=1.0.1"
 pylint = ">=3.1.0"
 
-[tool.poetry.dev-dependencies]
-black = ">=24.3.0"
-behave = ">=1.2.6"
 
 [build-system]
 requires = ["poetry-core>=1.6.0"]

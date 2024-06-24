@@ -13,16 +13,14 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class MonorepoMigrationSteps {
+public class MonorepoMigrationSteps extends AbstractGroupMigrationTestSteps{
 
-    private File testTomlFileDirectory = new File("./target/test-classes/migration/monorepo");
-    private File pyProjectToml;
+    public MonorepoMigrationSteps() {
+        super();
+        testTomlFileDirectory = new File("./target/test-classes/migration/monorepo");
+    }
 
-    private boolean shouldExecute;
-
-    private boolean executionSucceeded;
 
     @Given("an existing pyproject.toml file with two monorepo dependencies each in the tool.poetry.dependencies and tool.poetry.group.monorepo.dependencies groups")
     public void an_existing_pyproject_toml_file_with_two_monorepo_dependencies_each_in_the_tool_poetry_group_dependencies_groups() {
@@ -79,29 +77,21 @@ public class MonorepoMigrationSteps {
         assertFalse(shouldExecute, "Migration execution should have been skipped!");
     }
 
-
-    private static int getNumberOfMonorepoChildren(Optional<Config> tomlElement) {
-        int numberOfMonorepoDependencies = 0;
+    protected int getNumberOfMonorepoChildren(Optional<Config> tomlElement) {
+        int numberOfLegacyDependencies = 0;
         if (tomlElement.isPresent()) {
             Config foundDependencies = tomlElement.get();
             Map<String, Object> dependencyMap = foundDependencies.valueMap();
 
             for (Map.Entry<String, Object> dependency : dependencyMap.entrySet()) {
-                String packageName = dependency.getKey();
                 Object packageRhs = dependency.getValue();
                 if (TomlUtils.representsLocalDevelopmentVersion(packageRhs)) {
-                    numberOfMonorepoDependencies++;
+                    numberOfLegacyDependencies++;
                 }
             }
         }
 
-        return numberOfMonorepoDependencies;
-    }
-
-
-    private void verifyExecutionOccurred() {
-        assertTrue(shouldExecute, "Migration should have been selected to execute!");
-        assertTrue(executionSucceeded, "Migration should have executed successfully!");
+        return numberOfLegacyDependencies;
     }
 
 }

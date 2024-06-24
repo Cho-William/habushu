@@ -1,26 +1,41 @@
 [
-    {
-        "group": "baton-migrations", 
-        "type": "ordered", 
-        "migrations": [
-            {
-                "name": "remove-monorepo-group-migration",
-                "implementation": "org.technologybrewery.habushu.migration.RemoveMonorepoGroupMigration",
-                "fileSets": [
-                  {
-                    "includes": ["pyproject.toml"]
-                  }
-                ]
-              },
-              {
-                "name": "custom-poetry-core-version-migration",
-                "implementation": "org.technologybrewery.habushu.migration.CustomPoetrycoreVersionMigration",
-                "fileSets": [
-                  {
-                    "includes": ["pyproject.toml"]
-                  }
-                ]
-              }
+  {
+    "group": "baton-migrations",
+    "type": "ordered",
+    "migrations": [
+      {
+        "name": "remove-monorepo-group-migration",
+        "implementation": "org.technologybrewery.habushu.migration.RemoveMonorepoGroupMigration",
+        "fileSets": [
+          {
+            "includes": [
+              "pyproject.toml"
+            ]
+          }
         ]
-    }
+      },
+      {
+        "name": "custom-poetry-core-version-migration",
+        "implementation": "org.technologybrewery.habushu.migration.CustomPoetrycoreVersionMigration",
+        "fileSets": [
+          {
+            "includes": [
+              "pyproject.toml"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "dev-dependencies-preferred-poetry-approach-group-migration",
+        "implementation": "org.technologybrewery.habushu.migration.DevDependenciesGroupMigration",
+        "fileSets": [
+          {
+            "includes": [
+              "pyproject.toml"
+            ]
+          }
+        ]
+      }
+    ]
+  }
 ]

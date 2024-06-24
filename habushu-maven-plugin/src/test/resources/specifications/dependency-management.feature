@@ -28,7 +28,7 @@ Feature: Test dependency management capabilities to help align package versions 
       | krausening   | 15                 |
       | cryptography | ^40.0.0            |
 
-  Scenario Outline: [tool.poetry.dev-dependencies] dependency is changed when managed and not matching current value
+  Scenario Outline: [tool.poetry.group.dev.dependencies] dependency is changed when managed and not matching current value
     Given a Habushu configuration with a managed dependency of "<package>" and "<operatorAndVersion>"
     When Habushu executes
     Then the pyproject.toml file has updates

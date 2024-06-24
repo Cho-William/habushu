@@ -303,8 +303,8 @@ public class InstallDependenciesMojo extends AbstractHabushuMojo {
                 pyProjectConfig.load();
 
                 // Look for the standard Poetry dependency groups:
-                executeDetailedManagedDependencyMismatchActions(replacements, pyProjectConfig, "tool.poetry.dependencies");
-                executeDetailedManagedDependencyMismatchActions(replacements, pyProjectConfig, "tool.poetry.dev-dependencies");
+                executeDetailedManagedDependencyMismatchActions(replacements, pyProjectConfig, TomlUtils.TOOL_POETRY_DEPENDENCIES);
+                executeDetailedManagedDependencyMismatchActions(replacements, pyProjectConfig, TomlUtils.TOOL_POETRY_DEV_DEPENDENCIES);
 
                 // Search for custom Poetry dependency groups:
                 List<String> toolPoetryGroupSections = findCustomToolPoetryGroups();
