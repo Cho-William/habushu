@@ -53,3 +53,7 @@ jobs:
                   MAVEN_PASSWORD: ${{ secrets.SONATYPE_CENTRAL_REPO_TOKEN_KEY }}
                   GPG_PASSPHRASE: ${{ secrets.GPG_PRIVATE_KEY_PASSPHRASE }}
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            # Optional: Uploads the full dependency graph to GitHub to improve the quality of Dependabot alerts this repository can receive
+            - name: Update dependency graph
+              uses: advanced-security/maven-dependency-submission-action@v4
