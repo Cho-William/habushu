@@ -78,34 +78,34 @@ public class ContainerizeDepsMojo extends AbstractHabushuMojo {
     /**
      * Working directory relative to the basedir - typically working directory and basedir are synonymous.
      */
-    @Parameter(readonly = true, required = true)
+    @Parameter(readonly = true)
     protected String workingDirectoryRelativeToBasedir;
 
     /**
      * Expected subdirectory of the monorepo dependency's basedir
      * in which Poetry places generated source and wheel archive distributions.
      */
-    @Parameter(defaultValue = "/dist", readonly = true, required = true)
+    @Parameter(defaultValue = "/dist", readonly = true)
     protected String distDirectoryRelativeToBasedir;
 
     /**
      * Expected subdirectory of the monorepo dependency's basedir
      * in which Maven places build-time artifacts. Should NOT include dist items.
      */
-    @Parameter(defaultValue = "/target", readonly = true, required = true)
+    @Parameter(defaultValue = "/target", readonly = true)
     protected String targetDirectoryRelativeToBasedir;
 
     /**
      * Location of where containerization files will be placed.
      */
-    @Parameter(defaultValue = "${project.build.directory}/containerize-support", readonly = true, required = true)
+    @Parameter(defaultValue = "${project.build.directory}/containerize-support", readonly = true)
     protected File containerizeSupportDirectory;
 
     /**
      * Upstream directory that houses all necessary monorepo dependencies.
      * Monorepo dependency source files will be copied from here.
      */
-    @Parameter(readonly = true, required = true)
+    @Parameter(readonly = true)
     protected File anchorSourceDirectory;
 
     private File anchorOutputDirectory;
