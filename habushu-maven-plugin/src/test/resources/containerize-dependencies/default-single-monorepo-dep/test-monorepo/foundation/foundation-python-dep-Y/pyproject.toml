@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "extensions-python-dep-Y"
-version = "1.0.0.dev"
+version = "1.0.0"
 description = "description"
 authors = ["author"]
 packages = [
