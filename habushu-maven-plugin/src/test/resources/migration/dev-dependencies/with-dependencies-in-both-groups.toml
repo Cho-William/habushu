@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "with-dependencies-is-both-groups"
+version = "2.9.0.dev"
+description = "Test moving dev-dependencies dependecies to group.dev.dependencies group when group.dev.dependencies group already exists"
+authors = ["Test <blah@foobar.com>"]
+license = "MIT License"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.group.dev.dependencies]
+kappa-maki = ">=1.0.0"
+pylint = ">=3.1.0"
+
+[tool.poetry.dev-dependencies]
+black = ">=24.3.0"
+behave = ">=1.2.6"
+
+[build-system]
+requires = ["poetry-core>=1.6.0"]
+build-backend = "poetry.core.masonry.api"

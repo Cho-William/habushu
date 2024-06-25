@@ -20,6 +20,7 @@ public final class TomlUtils {
     public static final String EQUALS = "=";
     public static final String DOUBLE_QUOTE = "\"";
     public static final String TOOL_POETRY_DEPENDENCIES = "tool.poetry.dependencies";
+    public static final String TOOL_POETRY_DEV_DEPENDENCIES = "tool.poetry.group.dev.dependencies";
     public static final String TOOL_POETRY_GROUP_MONOREPO_DEPENDENCIES = "tool.poetry.group.monorepo.dependencies";
     public static final String VERSION = "version";
     public static final String PATH = "path";

@@ -10,7 +10,7 @@ python = "^3.11"
 some-local-monorepo-dependencies-1 = {path = "../some-local-monorepo-dependencies-1", develop = true}
 some-local-monorepo-dependencies-2 = {path = "../some-local-monorepo-dependencies-2", develop = true}
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 black = "^18.0.0"
 
 [build-system]
